@@ -1,0 +1,37 @@
+ULG development version 0.1
+- development started in June 2012
+- sponsored by CZ.NIC (http://www.nic.cz)
+- intention is to create a versatile Looking Glass for various routers
+- genshi and cherrypy was used in the beginning
+- cherrypy was later dropped and simple CGI was used instead
+
+Basic instalation procedure is:
+
+1) install prerequisites: Python 2.7, Genshi, Python CGI module and pexpect
+2) deploy files in src directory to some place in WWW tree
+3) edit config.py to set up routers and credentials
+4) edit defaults.py to set up paths
+5) create .htaccess file with following contents:
+
+<FilesMatch "(.pyc|.*~)">
+  Deny from all
+</FilesMatch>
+
+Options +ExecCGI
+AddHandler cgi-script .py
+
+(Or use corresponding config of your web server.)
+
+6) access http://yourserver/path-to-ulg/index.py via browser
+7) change texts and templates in defaults.py and templates/index.py and other files in templates/
+
+Contacts:
+
+1) Author: tmshlvck@gmail.com or tomas.hlavacek@nic.cz
+2) GIT hub https://github.com/tmshlvck/ulg
+
+
+Future plans:
+
+This "pre-release" is only a preview and "technology demonstrator". Requests and contributions are welcomed. I indend to support BIRD (http://bird.network.cz) and Cisco routers and switches and support typical BGP-related commands and also IGP and L2 management commands in order to make LG more useful for ordinary NOC staff especially for information aquisition during outages and problems.
+

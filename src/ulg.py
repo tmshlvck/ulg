@@ -19,332 +19,448 @@
 
 
 # Imports
+import os, sys
 from genshi.template import TemplateLoader
 from genshi.core import Markup
-import os
-import pexpect
-import socket
+import cgi
+import cgitb; cgitb.enable()
+import random
+import time
+import md5
+import pickle
 import re
+import fcntl
 
+import config
 import defaults
 
-STRING_ANY='any'
-STRING_PARAMETER='Parameter'
-STRING_COMMAND='Command'
-STRING_ERROR='Error encountered while preparing or running command'
-STRING_BAD_PARAMS='Verification of command or parameters failed.'
+import ulgmodel
 
-STRING_EXPECT_SSH_NEWKEY='Are you sure you want to continue connecting'
-STRING_EXPECT_PASSWORD='(P|p)assword:'
+### CGI output handler
 
-
-class TextParameter(object):
-    def __init__(self,pattern='.*',name=STRING_PARAMETER,default=''):
-        self.name=name
-        self.pattern=pattern
-        self.default=default
-
-    def getType(self):
-        return 'text'
-
-    def getName(self):
-        return self.name
-
-    def getDefault(self):
-        return self.default
-
-    def checkInput(self,input):
-        if(re.compile(self.pattern).match(input)):
-            return True
+class Session(object):
+    def __init__(self,sessionid=None,routerid=None,commandid=None,parameters=[],result=None,finished=False):
+        if(sessionid == None):
+            self.sessionid = self.__genSessionId__()
         else:
-            return False
+            self.sessionid=sessionid
 
-    def normalizeInput(self,input):
-        if(self.checkInput(input)[0]):
-            return input
+        self.routerid=routerid
+        self.commandid=commandid
+        self.parameters=parameters
+        self.result=result
+        self.finished=finished
+
+        self.save()
+
+    def __genSessionId__(self):
+        return md5.new(str(time.time())+str(random.randint(1,1000000))).hexdigest()
+
+    @staticmethod
+    def getSessionFileName(sessionid):
+        if(re.compile('^[a-zA-Z0-9]{10,128}$').match(sessionid)):
+            return defaults.session_dir+'/'+'ulg-'+sessionid+'.session'
         else:
-            raise Exception("Invalid input encountered: Check did not passed.")
+            raise Exception('Invalid session id passed. Value was: '+sessionid)
 
-class SelectionParameter(TextParameter):
-    def __init__(self,option_names=[],option_values=[],name=STRING_PARAMETER,default=0):
-        self.option_names=option_names
+    @staticmethod
+    def load(sessionid):
+        if(sessionid == None):
+            return None
 
-    def getType(self):
-        return 'select'
-
-    def setOptions(self,option_names,option_values):
-        self.option_names=option_names
-        self.option_values=option_values
-
-    def setOptionsFromTuples(self,tuples):
-        # TODO
-        pass
-
-    def getOptions(self):
-        return (self.option_names,self.option_values)
-
-    def getOptionTuples(self):
-        # TODO
-        pass
-
-    def checkInput(self,input):
-        index=0
         try:
-            index=int(input)
-        except:
-            return False
-        return True
+            fn = Session.getSessionFileName(sessionid)
 
-    def normalizeInput(self,input):
-        if(self.checkInput(input)):
-            return option_values[int(input)]
+            if(os.path.isfile(fn)):
+                f = open(fn, 'rb')
+                s = pickle.load(f)
+                f.close()
+                return s
+            else:
+                return None
+            
+        except Exception:
+            return None
+
+    def save(self):
+        try:
+            fn = Session.getSessionFileName(self.getSessionId())
+            f = open(fn,'wb')
+            pickle.dump(self, f)
+            f.close()
+        finally:
+            # TODO log("Saving session failed: " + traceback.format_exc())
+            pass
+
+    def getSessionId(self):
+        return self.sessionid
+
+    def setFinished(self):
+        self.finished=True
+        self.save()
+
+    def isFinished(self):
+        return self.finished
+
+    def setRouterId(self,router):
+        self.routerid=routerid
+        self.save()
+
+    def getRouterId(self):
+        return self.routerid
+
+    def setCommandId(self,command):
+        self.commandid = commandid
+        self.save()
+
+    def getCommandId(self):
+        return self.commandid
+
+    def cleanParameters(self):
+        self.parameters = []
+        self.save()
+
+    def addParameter(self,parameter):
+        if(not self.parameters):
+            self.parameters = []
+        self.parameters.append(parameter)
+        self.save()
+
+    def getParameters(self):
+        return self.parameters
+
+    def setResult(self,result):
+        self.result = result
+        self.save()
+
+    def getResult(self):
+        return self.result
+
+    def appendResult(self,result_fragment):
+        self.result = self.result + result_fragment
+        self.save()
+
+    def getRouter(self):
+        if(self.getRouterId()!=None):
+            return config.routers[self.getRouterId()]
         else:
-            raise Exception("Invalid input encountered: Check did not passed.")        
+            return None
 
-class TextCommand(object):
-    def __init__(self,command,param_specs=[],name=None):
-        self.command=command
-        self.param_specs=param_specs
+    def getCommand(self):
+        if(self.getRouterId()!=None)and(self.getCommandId()!=None):
+            return self.getRouter().listCommands()[self.getCommandId()]
+        else:
+            return None
 
-        self.loader = TemplateLoader(
+class Decorator:
+    def __init__(self):
+        pass
+
+    def getScriptURL(self):
+        return os.path.basename(__file__)
+
+    def getURL(self,action,parameters={}):
+        url=self.getScriptURL() + ("?action=%s" % action)
+        for k in parameters.keys():
+            url = url + '&' + k + '=' + parameters[k]
+        return url
+
+    def getIndexURL(self):
+        return self.getURL('index')
+
+    def getRuncommandURL(self,parameters={}):
+        return self.getURL('runcommand',parameters)
+
+    def getDisplayURL(self,sessionid):
+        return self.getURL('display',{'sessionid':sessionid})
+
+    def getDebugURL(self,parameters={}):
+        return self.getURL('debug',parameters)
+
+    def getErrorURL(self,parameters={}):
+        return self.getURL('error',parameters)
+
+    def getRouterID(self,router):
+        # TODO
+        return 0
+
+    def getCommandID(self,router,command):
+        # TODO
+        return 0
+
+class ULGCgi:
+    def __init__(self):
+        self.loader=TemplateLoader(
             os.path.join(os.path.dirname(__file__), defaults.template_dir),
             auto_reload=True
             )
 
-        if(name==None):
-            self.name=command
+        self.decorator = Decorator()
 
-    def getCommand(self,parameters=None):
-        if(self.checkParamsInput(parameters)):
-            c = self.command
+    def rescanRouters(self):
+        for r in config.routers:
+            r.rescanHook()
 
-            for p in parameters:
-                c = c + ' ' + p
-
-            return c
-        else:
-            return None
-
-    def getParamSpecs(self):
-        return self.param_specs
-
-    def getName(self):
-        return self.name
-
-    def checkParamsInput(self,input):
-        if(((input == None)or(self.getParamSpecs()==None))and(self.getParamSpecs()!=input)):
-            return False
-
-        if(len(input)!=len(self.getParamSpecs())):
-            return False
-
-        for pidx,p in enumerate(self.getParamSpecs()):
-            if not p.checkInput(input[pidx]):
-                return False
-
-        return True
-
-    def rescanHook(self):
-        pass
-
-    def decorateResult(self,result,router=None):
-        return "<pre>\n%s\n</pre>" % result
-    
-class AnyCommand(TextCommand):
-    def __init__(self):
-        self.command=''
-        self.parameter = TextParameter('.+', name=STRING_COMMAND)
-        self.name=STRING_ANY
-
-    def getCommand(self,parameters=None):
-        c = ''
-        for p in parameters:
-            if(c==''):
-                c = p
+    def increaseUsage(self):
+        u = 0
+        try:
+            # Open files
+            if(os.path.isfile(defaults.usage_counter_file)):
+                lf = open(defaults.usage_counter_file,'r+')
+                u = int(lf.readline())
             else:
-                c = c + ' ' + p
+                lf = open(defaults.usage_counter_file,'w')
 
-        return c
+            # Acquire lock
+            fcntl.lockf(lf, fcntl.LOCK_EX)
+        except IOError,ValueError:
+            # TODO: log("Locking mechanism failure: "+str(e))
+            return False
 
-class Router(object):
-    def __init__(self):
-        self.setCommands({})
-        self.setName('')
+        try:
+            if(u < defaults.usage_limit):
+                # write a new value and release lock
+                lf.seek(0)
+                lf.write(str(u+1)+'\n')
+                lf.close()
+                return True
+            else:
+                # release lock
+                lf.close()
+                return False
+        except IOError as e:
+            # TODO: log("Locking mechanism update failure: "+str(e))
+            return False
 
-    def setName(self,name):
-        self.name=name
+    def decreaseUsage(self):
+        u = 1
+        try:
+            # Open files
+            if(os.path.isfile(defaults.usage_counter_file)):
+                lf = open(defaults.usage_counter_file,'r+')
+                u = int(lf.readline())
+            else:
+                lf = open(defaults.usage_counter_file,'w')
 
-    def getName(self):
-        return self.name
+            # Acquire lock
+            fcntl.lockf(lf, fcntl.LOCK_EX)
+        except IOError,ValueError:
+            # TODO: log("Locking mechanism failure: "+str(e))
+            return False
 
-    def setCommands(self, commands):
-        self.commands=commands
+        try:
+            if(u>0):
+                # write a new value and release lock
+                lf.seek(0)
+                lf.write(str(u-1)+'\n')
+                lf.close()
+                return
+            else:
+                # release lock
+                lf.close()
+                return
+        except IOError as e:
+            # TODO: log("Locking mechanism update failure: "+str(e))
+            pass
 
-    def listCommands(self):
-        return self.commands
+    def stopSessionOverlimit(self,session):
+        session.setResult(defaults.STRING_SESSION_OVERLIMIT)
+        session.setFinished()
 
-    def rescanHook(self):
-        for c in self.listCommands():
-            c.rescanHook()
+    def HTTPRedirect(self,url):
+        return """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Redirect!</title>
+<meta http-equiv="REFRESH" content="0;url=%s">
+</head>
+<body>
+</body>
+</html>""" % url
 
-    def returnError(self,error=None):
-        r = '<em>'+STRING_ERROR
-        r = r + ': '+error+'</em>' if error else r+'.</em>'
-        return r
+    def runCommand(self,session):
+        # try to increase usage counter
+        if(self.increaseUsage()):
+            # start new thread if needed
+            if(defaults.always_start_thread or session.getRouter().getForkNeeded()):
 
-    def runCommand(self,command,parameters):
-        c = command.getCommand(self.normalizeParameters(parameters))
+                # define trivial thread function
+                def commandThreadBody(session,decreaseUsageMethod):
+                    try:
+                        session.setResult(session.getRouter().runCommand(session.getCommand(),session.getParameters(),self.decorator))
+                        session.setFinished()
+                    except Exception as e:
+                        # TODO: log("Exception occured while running a command")
+                        pass
+                    finally:
+                        decreaseUsageMethod()
 
-        if(c == None):
-            return self.returnError(STRING_BAD_PARAMS)
+                # fork a daemon process (fork two time to decouple with parent)
+                sys.stdout.flush()
+                child_pid = os.fork()
+                if(child_pid == 0):
+                    # detach process
+                    devnull = open(os.devnull,'w')
+                    os.dup2(devnull.fileno(),sys.stdout.fileno())
+                    os.dup2(devnull.fileno(),sys.stderr.fileno())
 
-        r = ''
-        if(defaults.debug):
-            r = "<h3>DEBUG</h3><pre>Router.runCommand():\ncommand_name="+command.getName()+'\n'
-            if(parameters != None):
-                for pidx,p in enumerate(parameters):
-                    r = r + " param"+str(pidx)+"="+str(p)+"\n"
-            r = r + "complete command="+c+"\n" + \
-                "</pre><hr>"
+                    # run the command
+                    commandThreadBody(session,self.decreaseUsage)
 
-        r = r + command.decorateResult(self.runRawCommand(c),self)
-        return r
+                    # exit the child
+                    sys.exit(0)
 
-    def runRawCommand(self,command):
-        """ Abstract method. """
-        raise Exception("runRawCommand() method not supported for the abstract class Router. Inherit from the class and implement the method.")
+            else:
+                # directly run the selected action
+                commandThreadBody(session,self.decreaseUsage)
 
-    def normalizeParameters(self,parameters):
-        return [] if parameters == None else [command.getParameterSpecs()[pidx].normalizeInput(p) for pidx,p in enumerate(parameters)]
-
-    def getForkNeeded(self):
-        return False
-
-class RemoteRouter(Router):
-    def getHost(self):
-        return self.host
-
-    def setHost(self,host):
-        self.host = host
-
-    def getPort(self):
-        return self.port
-
-    def setPort(self,port):
-        self.port = port
-
-    def getUser(self):
-        return self.user
-
-    def setUser(self,user):
-        self.user = user
-
-    def setPassword(self, password):
-        self.password = password
-
-class LocalRouter(Router):
-    pass
-
-class CiscoRouter(RemoteRouter):
-    DefaultCommands = [TextCommand('show version'),
-                       TextCommand('show ip bgp', [TextParameter('.*')]),
-                       TextCommand('show bgp ipv4 uni sum'),
-                       TextCommand('show bgp ipv6 uni sum'),
-                       TextCommand('show bgp ipv4 uni neighbor',[TextParameter('[0-9]{1-3}\.[0-9]{1-3}\.[0-9]{1-3}\.[0-9]{1-3}')]),
-                       TextCommand('show bgp ipv4 uni neighbor',[TextParameter('[0-9a-fA-F:]+)]')]),
-                       ]
-    STRING_SHELL_PROMPT = '>'
-
-    def __init__(self, host, user, password, port=22, commands=None):
-        self.setHost(host)
-        self.setPort(port)
-        self.setUser(user)
-        self.setPassword(password)
-        if(commands):
-            self.setCommands(commands)
         else:
-            self.setCommands(CiscoRouter.DefaultCommands)
-        self.setName(host)
+            # stop and report no-op
+            self.stopSessionOverlimit(session)
 
-    def getForkNeeded(self):
-        return True
 
-    def runRawCommand(self,command):
-        return self._runTextCommand(command)
+    def renderULGIndex(self,routerid=0,commandid=0,sessionid=None):
+        template = self.loader.load(defaults.index_template_file)
 
-    def _runTextCommand(self,command):
-        # connect
-        p=pexpect.spawn(defaults.bin_ssh+' -p'+str(self.getPort())+' '+str(self.getUser())+'@'+self.getHost())
+        # rescan routers - is it a good place for rescan?
+        self.rescanRouters()
 
-        # handle ssh
-        i=p.expect([STRING_EXPECT_SSH_NEWKEY,STRING_EXPECT_PASSWORD,pexpect.EOF])
-        if(i==0):
-            p.sendline('yes')
-            i=p.expect([STRING_EXPECT_SSH_NEWKEY,STRING_EXPECT_PASSWORD,pexpect.EOF])
+        return template.generate(defaults=defaults,
+                                 routers=config.routers,
+                                 default_routerid=routerid,
+                                 default_commandid=commandid,
+                                 default_sessionid=sessionid,
+                                 getFormURL=self.decorator.getRuncommandURL
+                                 ).render('html', doctype='html')
 
-        if(i==0):
-            raise Exception("pexpect session failed: Can not save SSH key.")
-        elif(i==1):
-            p.sendline(self.password)
-        elif(i==2):
-            raise Exception("pexpect session failed: Connection timeout or SSH error.")
+
+    def renderULGAction(self,routerid=0,commandid=0,sessionid=None,**moreparams):
+        routerid=int(routerid)
+        commandid=int(commandid)
+
+        # create and register session
+        session = Session(sessionid=sessionid,routerid=routerid,commandid=commandid)
+    
+        # extract parameters
+        session.cleanParameters()
+        for pidx,ps in enumerate(session.getCommand().getParamSpecs()):
+            if('param'+str(pidx) in moreparams.keys()):
+                session.addParameter(moreparams['param'+str(pidx)])
+            else:
+                session.addParameter(ps.getDefault())
+
+        # run the command (possibly in a separate thread)
+        self.runCommand(session)
+
+        # redirect to the session display
+        return self.HTTPRedirect(self.decorator.getDisplayURL(session.getSessionId()))
+
+
+    def renderULGResult(self,sessionid=None):
+        if(sessionid==None):
+            return self.HTTPRedirect(self.decorator.getErrorURL())
+
+        session = Session.load(sessionid)
+        if(session == None):
+            return self.HTTPRedirect(self.decorator.getErrorURL())
+
+        if(session.isFinished()):
+            refresh=None
         else:
-            raise Exception("pexpect session failed: SSH error.")
+            refresh = defaults.refresh_interval
 
-        # check shell and preset terminal
-        i=p.expect([CiscoRouter.STRING_SHELL_PROMPT,pexpect.EOF])
-        if(i==0):
-            p.sendline('terminal length 0')
+        # rescan routers - is it a good place for this?
+        self.rescanRouters()
+
+        template = self.loader.load(defaults.index_template_file)
+        return template.generate(defaults=defaults,
+                                 routers=config.routers,
+                                 default_routerid=session.getRouterId(),
+                                 default_commandid=session.getCommandId(),
+                                 default_params=session.getParameters(),
+                                 default_sessionid=sessionid,
+                                 result=Markup(session.getResult()),
+                                 refresh=refresh,
+                                 getFormURL=self.decorator.getRuncommandURL
+                                 ).render('html', doctype='html')
+
+    def renderULGError(self,sessionid=None,**params):
+        template = self.loader.load(defaults.index_template_file)
+
+        result_text = defaults.STRING_ARBITRARY_ERROR
+
+        session = Session.load(sessionid)
+        if(session!=None):
+            result_text=self.sessions[sessionid].getResult()
+
+        return template.generate(defaults=defaults,
+                                 routers=config.routers,
+                                 default_routerid=0,
+                                 default_commandid=0,
+                                 default_sessionid=None,
+                                 result=Markup(result_text),
+                                 refresh=0,
+                                 getFormURL=self.decorator.getRuncommandURL
+                                 ).render('html', doctype='html')
+    
+    def renderULGDebug(self,**params):
+        template = self.loader.load(defaults.index_template_file)
+
+        result_text = "<h1>DEBUG</h1>\n<pre>\nPARAMS:\n"
+        for k in params.keys():
+            result_text = result_text + str(k) + "=" + str(params[k]) + "\n"
+        result_test = result_text + "\n<pre>"
+
+        return template.generate(defaults=defaults,
+                                 routers=config.routers,
+                                 default_routerid=0,
+                                 default_commandid=0,
+                                 default_sessionid=None,
+                                 result=Markup(result_text),
+                                 refresh=0,
+                                 getFormURL=self.decorator.getRuncommandURL
+                                 ).render('html', doctype='html')
+
+    def index(self, **params):
+        if('sessionid' in params.keys()):
+            print self.renderULGIndex(sessionid=params['sessionid'])
         else:
-            raise Exception("pexpect session failed: Missing shell prompt.")
+            print self.renderULGIndex()
 
-        i=p.expect([CiscoRouter.STRING_SHELL_PROMPT,pexpect.EOF])
-        if(i==0):
-            p.sendline('terminal width 0')
-        else:
-            raise Exception("pexpect session failed: Missing shell prompt.")
+    def runcommand(self,routerid=0,commandid=0,sessionid=None,**params):
+        print self.renderULGAction(routerid,commandid,sessionid,**params)
 
-        i=p.expect([CiscoRouter.STRING_SHELL_PROMPT,pexpect.EOF])
-        if(i==0):
-            p.sendline(command)
-        else:
-            raise Exception("pexpect session failed: Missing shell prompt.")
-        
-        p.expect(['\n[^\n]*'+CiscoRouter.STRING_SHELL_PROMPT])
-        return p.before
+    def display(self,sessionid=None,**params):
+        print self.renderULGResult(sessionid)
 
+    def error(self,sessionid=None,**params):
+        print self.renderULGError(sessionid,**params)
 
-class BirdRouterLocal(LocalRouter):
-    DefaultCommands = [TextCommand('show protocols', [TextParameter('.*')])]
+    def debug(self,**params):
+        print self.renderULGDebug(**params)
 
-    def __init__(self,sock=defaults.default_bird_sock,commands=None):
-        super(self.__class__,self).__init__()
-        if(commands):
-            self.setCommands(commands)
-        else:
-            self.setCommands(BirdRouterLocal.DefaultCommands)
-        self.sock = sock
-        self.setName('localhost')
+# main
 
-    def runRawCommand(self,command):
-        # open socket to BIRD
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(self.sock)
+if __name__=="__main__":
+    form = cgi.FieldStorage()
+    handler = ULGCgi()
 
-        # cretate FD for the socket
-        sf=s.makefile()
+    print "Content-Type: text/html\n"
 
-        # send the command string
-        s.send(command)
+    action = form.getvalue('action',None)
+    params = dict([(k,form.getvalue(k)) for k in form.keys() if k != 'action'])
+    
+    if(action):
+        if(action == 'index'):
+            handler.index(**params)
+        if(action == 'runcommand'):
+            handler.runcommand(**params)
+        if(action == 'display'):
+            handler.display(**params)
+        if(action == 'error'):
+            handler.display(**params)
+        if(action == 'debug'):
+            handler.debug(**params)
 
-        # read and capture lines until the output delimiter string is hit
-        result=''
-        for l in sf:
-            if(re.compile('^0000').match(l)):
-                result=result+"BREAK\n"
-                break
-            result=result+l
-
-        # close the socket and return captured result
-        s.close()
-        return result
+    else:
+        handler.index(**params)

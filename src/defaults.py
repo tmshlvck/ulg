@@ -24,7 +24,11 @@ usage_limit = 1                                  # maximum concurrently processe
 
 # Settings defaults
 always_start_thread = True
-debug = True
+debug = False
+persistent_storage_file = '/tmp/ulg.data'
+session_dir = '/tmp'
+usage_counter_file = '/tmp/ulg.lock'
+log_file = '/tmp/ulg.log'
 default_bird_sock = '/var/run/bird.ctl'
 
 # Template dir relative to the index.py script
@@ -36,5 +40,12 @@ display_template_file = 'display.html'
 bin_ssh = '/usr/bin/ssh'
 
 # Output (localized) strings
-STRING_SESSION_OVERLIMIT = "<em>Limit of maximum concurrently running sessions and/or queries has been reached. The command can not be executed now. Please retry later.</em>"
+STRING_ANY='any'
+STRING_PARAMETER='Parameter'
+STRING_COMMAND='Command'
+STRING_ERROR_COMMANDRUN='Error encountered while preparing or running command'
+STRING_BAD_PARAMS='Verification of command or parameters failed.'
+STRING_SESSION_OVERLIMIT = "<em>Limit of maximum concurrently running sessions and/or queries has been reached. The command can not be executed now. Please try again later.</em>"
 STRING_ARBITRARY_ERROR = "Error encountered. Operation aborted. See log for further details."
+STRING_IPADDRESS = "IP address"
+STRING_IPSUBNET = "IP subnet"

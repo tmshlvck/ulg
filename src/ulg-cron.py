@@ -17,10 +17,29 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from ulg import *
 
-routers = [
-    CiscoRouter(host='testrouter1.core.company.com', user='xyz', password='xyz'),
-    CiscoRouter(host='testrouter2.core.company.com', user='xyz', password='xyz'),
-    BirdRouterLocal('/var/run/bird.ctl')
-    ]
+# Imports
+import os, sys
+import random
+import time
+import pickle
+
+import config
+import defaults
+
+import ulgmodel
+
+### ULG cron script
+
+class ULGCron:
+    def __init__(self):
+        pass
+
+    def run(self):
+        pass
+
+
+# main
+
+if __name__=="__main__":
+    return ULGCron().run()

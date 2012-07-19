@@ -159,7 +159,7 @@
     <div id="result">
       <hr/>
       <py:choose>
-	<py:when test="defined('result')">
+	<py:when test="defined('result') and result">
 	  ${result}
 	</py:when>
 	<py:otherwise>

@@ -28,7 +28,7 @@ import defaults
 import ulgmodel
 
 class BirdRouterLocal(ulgmodel.LocalRouter):
-    DefaultCommands = [ulgmodel.TextCommand('show protocols', [ulgmodel.TextParameter('.*')])]
+    DefaultCommands = [ulgmodel.TextCommand('show protocols %s', [ulgmodel.TextParameter('.*')])]
 
     def __init__(self,sock=defaults.default_bird_sock,commands=None):
         super(self.__class__,self).__init__()

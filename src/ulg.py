@@ -133,6 +133,9 @@ class Session(object):
         self.result = result
         self.save()
 
+    def setPreResult(self,result):
+        self.setResult('<pre>'+result+'</pre>')
+
     def getResult(self):
         return self.result
 
@@ -291,7 +294,8 @@ class ULGCgi:
                         session.setFinished()
                     except Exception as e:
                         # TODO: log("Exception occured while running a command")
-                        pass
+                        session.setPreResult(traceback.format_exc())
+                        session.setFinished()
                     finally:
                         decreaseUsageMethod()
 
@@ -379,7 +383,7 @@ class ULGCgi:
                                  default_commandid=session.getCommandId(),
                                  default_params=session.getParameters(),
                                  default_sessionid=sessionid,
-                                 result=Markup(session.getResult()),
+                                 result=Markup(session.getResult()) if (session.getResult()) else None,
                                  refresh=refresh,
                                  getFormURL=self.decorator.getRuncommandURL
                                  ).render('html', doctype='html')
@@ -398,7 +402,7 @@ class ULGCgi:
                                  default_routerid=0,
                                  default_commandid=0,
                                  default_sessionid=None,
-                                 result=Markup(result_text),
+                                 result=Markup(result_text) if(result_text) else None,
                                  refresh=0,
                                  getFormURL=self.decorator.getRuncommandURL
                                  ).render('html', doctype='html')
@@ -416,7 +420,7 @@ class ULGCgi:
                                  default_routerid=0,
                                  default_commandid=0,
                                  default_sessionid=None,
-                                 result=Markup(result_text),
+                                 result=Markup(result_text) if(result_text) else None,
                                  refresh=0,
                                  getFormURL=self.decorator.getRuncommandURL
                                  ).render('html', doctype='html')

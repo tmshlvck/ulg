@@ -32,15 +32,31 @@ STRING_EXPECT_PASSWORD='(P|p)assword:'
 
 
 class CiscoRouter(ulgmodel.RemoteRouter):
+    RegExIPv4Subnet = '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(/[0-9]{1,2}){0,1}]$'
+    RegExIPv4 = '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'
+    RegExIPv6Subnet = '^[0-9a-fA-F:]+(/[0-9]{1,2}){0,1}$'
+    RegExIPv6 = '^[0-9a-fA-F:]+$'
+
     DefaultCommands = [ulgmodel.TextCommand('show version'),
-                       ulgmodel.TextCommand('show ip bgp', [ulgmodel.TextParameter('^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(/[0-9]{1,2}){0,1}]$',name=defaults.STRING_IPSUBNET)]),
-                       ulgmodel.TextCommand('show bgp ipv4 uni sum'),
-                       ulgmodel.TextCommand('show bgp ipv6 uni sum'),
-                       ulgmodel.TextCommand('show bgp ipv4 uni neighbor',[ulgmodel.TextParameter('^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$',name=defaults.STRING_IPADDRESS)]),
-                       ulgmodel.TextCommand('show bgp ipv4 uni neighbor',[ulgmodel.TextParameter('[0-9a-fA-F:]+)]')]),
-                       ulgmodel.TextCommand('show bgp ipv4 uni neighbor',[ulgmodel.SelectionParameter([('91.210.16.1','91.210.16.1'),('91.210.16.2','91.210.16.2'),('91.210.16.3','91.210.16.3')],name=defaults.STRING_IPADDRESS)]),
+                       
+                       ulgmodel.TextCommand('show bgp ipv4 unicast %s', [ulgmodel.TextParameter(RegExIPv4Subnet,name=defaults.STRING_IPSUBNET)]),
+                       ulgmodel.TextCommand('show bgp ipv6 unicast %s', [ulgmodel.TextParameter(RegExIPv6Subnet,name=defaults.STRING_IPSUBNET)]),
+                       ulgmodel.TextCommand('show bgp ipv4 unicast summary'),
+                       ulgmodel.TextCommand('show bgp ipv6 unicast summary'),
+                       ulgmodel.TextCommand('show bgp ipv4 unicast neighbor %s',[ulgmodel.TextParameter(RegExIPv4,name=defaults.STRING_IPADDRESS)]),
+                       ulgmodel.TextCommand('show bgp ipv6 unicast neighbor %s',[ulgmodel.TextParameter(RegExIPv6,name=defaults.STRING_IPADDRESS)]),
+                       ulgmodel.TextCommand('show bgp ipv4 unicast neighbor %s received-routes',[ulgmodel.TextParameter(RegExIPv4,name=defaults.STRING_IPADDRESS)]),
+                       ulgmodel.TextCommand('show bgp ipv6 unicast neighbor %s received-routes',[ulgmodel.TextParameter(RegExIPv6,name=defaults.STRING_IPADDRESS)]),
+                       ulgmodel.TextCommand('show bgp ipv4 unicast neighbor %s advertised',[ulgmodel.TextParameter(RegExIPv4,name=defaults.STRING_IPADDRESS)]),
+                       ulgmodel.TextCommand('show bgp ipv6 unicast neighbor %s advertised',[ulgmodel.TextParameter(RegExIPv6,name=defaults.STRING_IPADDRESS)]),
+                       ulgmodel.TextCommand('show ip route %s',[ulgmodel.TextParameter(RegExIPv4,name=defaults.STRING_IPADDRESS)]),
+                       ulgmodel.TextCommand('show ipv6 unicast route %s',[ulgmodel.TextParameter(RegExIPv6,name=defaults.STRING_IPADDRESS)]),
+                       
+#                      ulgmodel.TextCommand('show bgp ipv4 uni neighbor',[ulgmodel.SelectionParameter([('91.210.16.1','91.210.16.1'),('91.210.16.2','91.210.16.2'),('91.210.16.3','91.210.16.3')],name=defaults.STRING_IPADDRESS)]),
+
+                       
                        ]
-    STRING_SHELL_PROMPT = '>'
+    STRING_SHELL_PROMPT_REGEXP = '\n[a-zA-Z0-9\._-]+>'
 
     def __init__(self, host, user, password, port=22, commands=None):
         self.setHost(host)
@@ -79,25 +95,25 @@ class CiscoRouter(ulgmodel.RemoteRouter):
             raise Exception("pexpect session failed: SSH error.")
 
         # check shell and preset terminal
-        i=p.expect([CiscoRouter.STRING_SHELL_PROMPT,pexpect.EOF])
+        i=p.expect([CiscoRouter.STRING_SHELL_PROMPT_REGEXP,pexpect.EOF])
         if(i==0):
             p.sendline('terminal length 0')
         else:
             raise Exception("pexpect session failed: Missing shell prompt.")
 
-        i=p.expect([CiscoRouter.STRING_SHELL_PROMPT,pexpect.EOF])
+        i=p.expect([CiscoRouter.STRING_SHELL_PROMPT_REGEXP,pexpect.EOF])
         if(i==0):
             p.sendline('terminal width 0')
         else:
             raise Exception("pexpect session failed: Missing shell prompt.")
 
-        i=p.expect([CiscoRouter.STRING_SHELL_PROMPT,pexpect.EOF])
+        i=p.expect([CiscoRouter.STRING_SHELL_PROMPT_REGEXP,pexpect.EOF])
         if(i==0):
             p.sendline(command)
         else:
             raise Exception("pexpect session failed: Missing shell prompt.")
         
-        p.expect(['\n[^\n]*'+CiscoRouter.STRING_SHELL_PROMPT])
+        p.expect([CiscoRouter.STRING_SHELL_PROMPT_REGEXP,pexpect.EOF])
 
         def stripFirstLine(string):
             lines = str.splitlines(string)

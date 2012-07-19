@@ -134,7 +134,10 @@ class TextCommand(object):
         self.param_specs=param_specs
 
         if(name==None):
-            self.name=command
+            if(self.param_specs):
+                self.name=command % tuple([('<'+str(c.getName())+'>') for c in self.param_specs])
+            else:
+                self.name=command
 
     def getParamSpecs(self):
         return self.param_specs
@@ -170,18 +173,17 @@ class TextCommand(object):
 
     def getCommandText(self,parameters=None):
         if(self.checkParamsInput(parameters)):
-            c = self.command
-
             parameters_normalized = self.normalizeParameters(parameters)
 
-            for p in parameters_normalized:
-                c = c + ' ' + p
+            if(parameters_normalized):
+                return self.command % tuple(parameters_normalized)
+            else:
+                return self.command
 
-            return c
         else:
             return None
 
-    def rescanHook(self):
+    def rescanHook(self,router):
         pass
 
     def decorateResult(self,result,router=None,decorator=None):
@@ -224,7 +226,7 @@ class Router(object):
 
     def rescanHook(self):
         for c in self.listCommands():
-            c.rescanHook()
+            c.rescanHook(self)
 
     def returnError(self,error=None):
         r = '<em>'+defaults.STRING_ERROR_COMMANDRUN

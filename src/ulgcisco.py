@@ -38,9 +38,10 @@ class CiscoCommandBgpIPv4Sum(ulgmodel.TextCommand):
     RED_STATES = ['Idle', 'Active']
     YELLOW_STATES = ['Idle (Admin)',]
 
-    def __init__(self,name=None):
+    def __init__(self,name=None,peer_address_command=None):
         self.command=CiscoCommandBgpIPv4Sum.COMMAND_TEXT
         self.param_specs=[]
+        self.peer_address_command = peer_address_command
 
         if(name==None):
             if(self.param_specs):
@@ -50,7 +51,13 @@ class CiscoCommandBgpIPv4Sum(ulgmodel.TextCommand):
         else:
             self.name = name
 
-    def _decorateTableLine(self,line,decorator_helper):
+    def _getPeerURL(self,decorator_helper,router,peer_address):
+        return decorator_helper.getRuncommandURL({'routerid':str(decorator_helper.getRouterID(router)),
+                                                  'commandid':str(decorator_helper.getCommandID(router,self.peer_address_command)),
+                                                  'param0':peer_address})
+        
+
+    def _decorateTableLine(self,line,decorator_helper,router):
         lrm = re.compile(CiscoCommandBgpIPv4Sum.TABLE_LINE_REGEXP).match(line)
         if(lrm):
             # color selection
@@ -61,11 +68,19 @@ class CiscoCommandBgpIPv4Sum(ulgmodel.TextCommand):
             else:
                 color = ulgmodel.TableDecorator.GREEN
 
-            return [(lrm.group(1),color),(lrm.group(2),color),
-                    (decorator_helper.ahref(defaults.getASNURL(lrm.group(3)),lrm.group(3)),color),(lrm.group(4),color),
-                    (lrm.group(5),color),(lrm.group(6),color),
-                    (lrm.group(7),color),(lrm.group(8),color),
-                    (lrm.group(9),color),(lrm.group(10),color),]
+            return [
+                (decorator_helper.ahref(self._getPeerURL(decorator_helper,router,lrm.group(1)),lrm.group(1)),color)
+                if decorator_helper and self.peer_address_command else (lrm.group(1),color),
+                (lrm.group(2),color),
+                (decorator_helper.ahref(defaults.getASNURL(lrm.group(3)),lrm.group(3)),color),
+                (lrm.group(4),color),
+                (lrm.group(5),color),
+                (lrm.group(6),color),
+                (lrm.group(7),color),
+                (lrm.group(8),color),
+                (lrm.group(9),color),
+                (lrm.group(10),color),
+                ]
         else:
             raise Exception("Can not parse line: "+l)
 
@@ -86,19 +101,19 @@ class CiscoCommandBgpIPv4Sum(ulgmodel.TextCommand):
         for l in lines:
             if(tb):
                 # inside table body
-                table.append(self._decorateTableLine(l,decorator_helper))
+                table.append(self._decorateTableLine(l,decorator_helper,router))
 
             else:
-                # not yet in the table body
-                before = before + l + '\n'
-
                 # should we switch to table body?
                 thrm = header_regexp.match(l)
                 if(thrm):
                     tb = True
                     table_header = [g for g in thrm.groups()]
+                else:
+                    # not yet in the table body, append before-table section
+                    before = before + l + '\n'
 
-        return ulgmodel.TableDecorator(table,table_header,'Test TableDecorator!!!',decorator_helper.pre(before)).decorate()
+        return ulgmodel.TableDecorator(table,table_header,before=decorator_helper.pre(before)).decorate()
 
 
 class CiscoRouter(ulgmodel.RemoteRouter):
@@ -107,14 +122,16 @@ class CiscoRouter(ulgmodel.RemoteRouter):
     RegExIPv6Subnet = '^[0-9a-fA-F:]+(/[0-9]{1,2}){0,1}$'
     RegExIPv6 = '^[0-9a-fA-F:]+$'
 
+    _show_bgp_ipv4_uni_neigh = ulgmodel.TextCommand('show bgp ipv4 unicast neighbor %s',[ulgmodel.TextParameter(RegExIPv4,name=defaults.STRING_IPADDRESS)])
+
     DefaultCommands = [ulgmodel.TextCommand('show version'),
                        
                        ulgmodel.TextCommand('show bgp ipv4 unicast %s', [ulgmodel.TextParameter(RegExIPv4Subnet,name=defaults.STRING_IPSUBNET)]),
                        ulgmodel.TextCommand('show bgp ipv6 unicast %s', [ulgmodel.TextParameter(RegExIPv6Subnet,name=defaults.STRING_IPSUBNET)]),
-                       CiscoCommandBgpIPv4Sum('show bgp ipv4 unicast summary (+DECORATOR)'),
+                       CiscoCommandBgpIPv4Sum('show bgp ipv4 unicast summary (+DECORATOR)',peer_address_command=_show_bgp_ipv4_uni_neigh),
                        ulgmodel.TextCommand('show bgp ipv4 unicast summary'),
                        ulgmodel.TextCommand('show bgp ipv6 unicast summary'),
-                       ulgmodel.TextCommand('show bgp ipv4 unicast neighbor %s',[ulgmodel.TextParameter(RegExIPv4,name=defaults.STRING_IPADDRESS)]),
+                       _show_bgp_ipv4_uni_neigh,
                        ulgmodel.TextCommand('show bgp ipv6 unicast neighbor %s',[ulgmodel.TextParameter(RegExIPv6,name=defaults.STRING_IPADDRESS)]),
                        ulgmodel.TextCommand('show bgp ipv4 unicast neighbor %s received-routes',[ulgmodel.TextParameter(RegExIPv4,name=defaults.STRING_IPADDRESS)]),
                        ulgmodel.TextCommand('show bgp ipv6 unicast neighbor %s received-routes',[ulgmodel.TextParameter(RegExIPv6,name=defaults.STRING_IPADDRESS)]),

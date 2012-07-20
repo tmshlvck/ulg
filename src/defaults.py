@@ -52,4 +52,4 @@ STRING_IPSUBNET = "IP subnet"
 
 # URL generator functions
 def getASNURL(asn):
-    return 'https://apps.db.ripe.net/search/query.html?searchtext=AS%s&flags=&sources=RIPE_NCC&grssources=&inverse=&types=' % asn
+    return 'https://apps.db.ripe.net/search/query.html?searchtext=AS%s&flags=C&sources=RIPE_NCC&grssources=&inverse=&types=AUT_NUM' % asn

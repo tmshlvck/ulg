@@ -21,8 +21,24 @@
 # Imports
 import os
 import re
+from time import localtime, strftime
+from genshi.template import TemplateLoader
+from genshi.core import Markup
 
 import defaults
+
+
+
+def log(*messages):
+    try:
+        with open(defaults.log_file, 'a') as l:
+            for m in messages:
+                l.write(strftime("%b %d %Y %H:%M:%S: ", localtime()) + m)
+    except Exception:
+        pass
+
+def debug(message):
+    log('DEBUG:' + message)
 
 
 class PersistentStorgage(object):
@@ -53,6 +69,48 @@ class PersistentStorgage(object):
 
     def getDict(self):
         return self.data
+
+class TableDecorator(object):
+    WHITE = '#FFFFFF'
+    RED = '#FF0000'
+    GREEN = '#00FF00'
+    BLUE = '#0000FF'
+    YELLOW = '#FFFF00'
+    BLACK = '#000000'
+
+    def __init__(self, table, table_header, table_headline=None, before=None, after=None):
+        self.table = table
+        self.table_header = table_header
+        self.table_headline = table_headline
+        self.before = before
+        self.after = after
+
+        self.loader=TemplateLoader(
+            os.path.join(os.path.dirname(__file__), defaults.template_dir),
+            auto_reload=True
+            )
+
+    def decorate(self):
+        def preprocessTableCell(td):
+            if(isinstance(td,(list,tuple))):
+                if(len(td) >= 2):
+                    return (Markup(str(td[0])),Markup(str(td[1])))
+                elif(len(td) == 1):
+                    return (Markup(str(td[0])),Markup(TableDecorator.WHITE))
+                else:
+                    return ('',Markup(TableDecorator.WHITE))
+            else:
+                return (Markup(str(td)),Markup(TableDecorator.WHITE))
+
+        t = [[preprocessTableCell(td) for td in tr ] for tr in self.table]
+
+        template = self.loader.load(defaults.table_decorator_template_file)
+        return template.generate(table=t,
+                                 table_header=self.table_header,
+                                 table_headline=Markup(self.table_headline) if self.table_headline else '',
+                                 before=Markup(self.before) if self.before else '',
+                                 after=Markup(self.after) if self.after else '',
+                                 ).render('html', doctype='html')
 
 
 class TextParameter(object):
@@ -138,6 +196,8 @@ class TextCommand(object):
                 self.name=command % tuple([('<'+str(c.getName())+'>') for c in self.param_specs])
             else:
                 self.name=command
+        else:
+            self.name=name
 
     def getParamSpecs(self):
         return self.param_specs
@@ -147,19 +207,16 @@ class TextCommand(object):
 
     def checkParamsInput(self,input):
         if(((not input) and (self.getParamSpecs()))or((input) and (not self.getParamSpecs()))):
-            # TODO log/debug
-            print "Failed checking parameter count to zero."
+            log("Failed checking parameter count to zero, input:"+str(input)+' .')
             return False
 
         if(len(input)!=len(self.getParamSpecs())):
-            # TODO log
-            print "Failed checking parameter count (nonzero)."
+            log("Failed checking parameter count (nonzero), input: "+str(input)+' .')
             return False
 
         for pidx,p in enumerate(self.getParamSpecs()):
             if not p.checkInput(input[pidx]):
-                # TODO log
-                print "Failed checking parameter: "+input[pidx]
+                log("Failed checking parameter: "+str(input[pidx]))
                 return False
 
         return True
@@ -186,7 +243,7 @@ class TextCommand(object):
     def rescanHook(self,router):
         pass
 
-    def decorateResult(self,result,router=None,decorator=None):
+    def decorateResult(self,result,router=None,decorator_helper=None):
         return "<pre>\n%s\n</pre>" % result
     
 class AnyCommand(TextCommand):
@@ -233,11 +290,11 @@ class Router(object):
         r = r + ': '+error+'</em>' if error else r+'.</em>'
         return r
 
-    def runCommand(self,command,parameters,decorator):
+    def runCommand(self,command,parameters,decorator_helper):
         c = command.getCommandText(parameters)
 
         if(c == None):
-            #TODO: log("Bad params encountered in command "+str(command.getName())+" : "+str(parameters))
+            log("Bad params encountered in command "+str(command.getName())+" : "+str(parameters))
             return self.returnError(defaults.STRING_BAD_PARAMS)
 
         r = ''
@@ -249,7 +306,7 @@ class Router(object):
             r = r + "complete command="+c+"\n" + \
                 "</pre><hr>"
 
-        r = r + command.decorateResult(self.runRawCommand(c),self,decorator)
+        r = r + command.decorateResult(self.runRawCommand(c),self,decorator_helper)
         return r
 
     def runRawCommand(self,command):

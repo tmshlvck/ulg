@@ -31,6 +31,76 @@ STRING_EXPECT_SSH_NEWKEY='Are you sure you want to continue connecting'
 STRING_EXPECT_PASSWORD='(P|p)assword:'
 
 
+class CiscoCommandBgpIPv4Sum(ulgmodel.TextCommand):
+    COMMAND_TEXT='show bgp ipv4 unicast summary'
+    TABLE_HEADER_REGEXP='^\s*(Neighbor)\s+(V)\s+(AS)\s+(MsgRcvd)\s+(MsgSent)\s+(TblVer)\s+(InQ)\s+(OutQ)\s+(Up/Down)\s+(State/PfxRcd)\s*$'
+    TABLE_LINE_REGEXP='^\s*([0-9\.]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([a-z0-9:]+)\s+([a-zA-Z0-9]+|[a-zA-Z0-9]+\s\(Admin\))\s*$'
+    RED_STATES = ['Idle', 'Active']
+    YELLOW_STATES = ['Idle (Admin)',]
+
+    def __init__(self,name=None):
+        self.command=CiscoCommandBgpIPv4Sum.COMMAND_TEXT
+        self.param_specs=[]
+
+        if(name==None):
+            if(self.param_specs):
+                self.name=self.command % tuple([('<'+str(c.getName())+'>') for c in self.param_specs])
+            else:
+                self.name=self.command
+        else:
+            self.name = name
+
+    def _decorateTableLine(self,line,decorator_helper):
+        lrm = re.compile(CiscoCommandBgpIPv4Sum.TABLE_LINE_REGEXP).match(line)
+        if(lrm):
+            # color selection
+            if(lrm.group(10) in CiscoCommandBgpIPv4Sum.YELLOW_STATES):
+                color = ulgmodel.TableDecorator.YELLOW
+            elif(lrm.group(10) in CiscoCommandBgpIPv4Sum.RED_STATES):
+                color = ulgmodel.TableDecorator.RED
+            else:
+                color = ulgmodel.TableDecorator.GREEN
+
+            return [(lrm.group(1),color),(lrm.group(2),color),
+                    (decorator_helper.ahref(defaults.getASNURL(lrm.group(3)),lrm.group(3)),color),(lrm.group(4),color),
+                    (lrm.group(5),color),(lrm.group(6),color),
+                    (lrm.group(7),color),(lrm.group(8),color),
+                    (lrm.group(9),color),(lrm.group(10),color),]
+        else:
+            raise Exception("Can not parse line: "+l)
+
+    def decorateResult(self,result,router=None,decorator_helper=None):
+        if((not router) or (not decorator_helper)):
+            return "<pre>\n%s\n</pre>" % result
+
+        lines = str.splitlines(result)
+
+        before=''
+        after=''
+        table=[]
+        table_header=[]
+
+        tb = False
+        header_regexp = re.compile(CiscoCommandBgpIPv4Sum.TABLE_HEADER_REGEXP)
+        line_regexp = re.compile(CiscoCommandBgpIPv4Sum.TABLE_LINE_REGEXP)
+        for l in lines:
+            if(tb):
+                # inside table body
+                table.append(self._decorateTableLine(l,decorator_helper))
+
+            else:
+                # not yet in the table body
+                before = before + l + '\n'
+
+                # should we switch to table body?
+                thrm = header_regexp.match(l)
+                if(thrm):
+                    tb = True
+                    table_header = [g for g in thrm.groups()]
+
+        return ulgmodel.TableDecorator(table,table_header,'Test TableDecorator!!!',decorator_helper.pre(before)).decorate()
+
+
 class CiscoRouter(ulgmodel.RemoteRouter):
     RegExIPv4Subnet = '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(/[0-9]{1,2}){0,1}]$'
     RegExIPv4 = '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'
@@ -41,6 +111,7 @@ class CiscoRouter(ulgmodel.RemoteRouter):
                        
                        ulgmodel.TextCommand('show bgp ipv4 unicast %s', [ulgmodel.TextParameter(RegExIPv4Subnet,name=defaults.STRING_IPSUBNET)]),
                        ulgmodel.TextCommand('show bgp ipv6 unicast %s', [ulgmodel.TextParameter(RegExIPv6Subnet,name=defaults.STRING_IPSUBNET)]),
+                       CiscoCommandBgpIPv4Sum('show bgp ipv4 unicast summary (+DECORATOR)'),
                        ulgmodel.TextCommand('show bgp ipv4 unicast summary'),
                        ulgmodel.TextCommand('show bgp ipv6 unicast summary'),
                        ulgmodel.TextCommand('show bgp ipv4 unicast neighbor %s',[ulgmodel.TextParameter(RegExIPv4,name=defaults.STRING_IPADDRESS)]),

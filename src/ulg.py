@@ -30,6 +30,7 @@ import md5
 import pickle
 import re
 import fcntl
+import traceback
 
 import config
 import defaults
@@ -88,9 +89,8 @@ class Session(object):
             f = open(fn,'wb')
             pickle.dump(self, f)
             f.close()
-        finally:
-            # TODO log("Saving session failed: " + traceback.format_exc())
-            pass
+        except:
+            ulgmodel.log("Saving session failed: " + traceback.format_exc())
 
     def getSessionId(self):
         return self.sessionid
@@ -155,7 +155,7 @@ class Session(object):
         else:
             return None
 
-class Decorator:
+class DecoratorHelper:
     def __init__(self):
         pass
 
@@ -184,12 +184,24 @@ class Decorator:
         return self.getURL('error',parameters)
 
     def getRouterID(self,router):
-        # TODO
+        for ridx,r in enumerate(config.routers):
+            if(r == router):
+                return ridx
+
         return 0
 
     def getCommandID(self,router,command):
-        # TODO
+        for cidx,c in enumerate(router.listCommands()):
+            if(c == command):
+                return cidx
+
         return 0
+
+    def pre(self,text):
+        return ('<pre>%s</pre>' % text)
+
+    def ahref(self,url,text):
+        return ('<a href=%s>%s</a>' % (url,text))
 
 class ULGCgi:
     def __init__(self):
@@ -198,11 +210,7 @@ class ULGCgi:
             auto_reload=True
             )
 
-        self.decorator = Decorator()
-
-    def rescanRouters(self):
-        for r in config.routers:
-            r.rescanHook()
+        self.decorator_helper = DecoratorHelper()
 
     def increaseUsage(self):
         u = 0
@@ -217,7 +225,7 @@ class ULGCgi:
             # Acquire lock
             fcntl.lockf(lf, fcntl.LOCK_EX)
         except IOError,ValueError:
-            # TODO: log("Locking mechanism failure: "+str(e))
+            ulgmodel.log("Locking mechanism failure: "+str(e))
             return False
 
         try:
@@ -232,7 +240,7 @@ class ULGCgi:
                 lf.close()
                 return False
         except IOError as e:
-            # TODO: log("Locking mechanism update failure: "+str(e))
+            ulgmodel.log("Locking mechanism update failure: "+str(e))
             return False
 
     def decreaseUsage(self):
@@ -248,7 +256,7 @@ class ULGCgi:
             # Acquire lock
             fcntl.lockf(lf, fcntl.LOCK_EX)
         except IOError,ValueError:
-            # TODO: log("Locking mechanism failure: "+str(e))
+            ulgmodel.log("Locking mechanism failure: "+str(e))
             return False
 
         try:
@@ -263,7 +271,7 @@ class ULGCgi:
                 lf.close()
                 return
         except IOError as e:
-            # TODO: log("Locking mechanism update failure: "+str(e))
+            ulgmodel.log("Locking mechanism update failure: "+str(e))
             pass
 
     def stopSessionOverlimit(self,session):
@@ -290,10 +298,10 @@ class ULGCgi:
                 # define trivial thread function
                 def commandThreadBody(session,decreaseUsageMethod):
                     try:
-                        session.setResult(session.getRouter().runCommand(session.getCommand(),session.getParameters(),self.decorator))
+                        session.setResult(session.getRouter().runCommand(session.getCommand(),session.getParameters(),self.decorator_helper))
                         session.setFinished()
                     except Exception as e:
-                        # TODO: log("Exception occured while running a command")
+                        ulgmodel.log("ERROR: Exception occured while running a command:" + traceback.format_exc())
                         session.setPreResult(traceback.format_exc())
                         session.setFinished()
                     finally:
@@ -326,15 +334,12 @@ class ULGCgi:
     def renderULGIndex(self,routerid=0,commandid=0,sessionid=None):
         template = self.loader.load(defaults.index_template_file)
 
-        # rescan routers - is it a good place for rescan?
-        self.rescanRouters()
-
         return template.generate(defaults=defaults,
                                  routers=config.routers,
                                  default_routerid=routerid,
                                  default_commandid=commandid,
                                  default_sessionid=sessionid,
-                                 getFormURL=self.decorator.getRuncommandURL
+                                 getFormURL=self.decorator_helper.getRuncommandURL
                                  ).render('html', doctype='html')
 
 
@@ -357,24 +362,21 @@ class ULGCgi:
         self.runCommand(session)
 
         # redirect to the session display
-        return self.HTTPRedirect(self.decorator.getDisplayURL(session.getSessionId()))
+        return self.HTTPRedirect(self.decorator_helper.getDisplayURL(session.getSessionId()))
 
 
     def renderULGResult(self,sessionid=None):
         if(sessionid==None):
-            return self.HTTPRedirect(self.decorator.getErrorURL())
+            return self.HTTPRedirect(self.decorator_helper.getErrorURL())
 
         session = Session.load(sessionid)
         if(session == None):
-            return self.HTTPRedirect(self.decorator.getErrorURL())
+            return self.HTTPRedirect(self.decorator_helper.getErrorURL())
 
         if(session.isFinished()):
             refresh=None
         else:
             refresh = defaults.refresh_interval
-
-        # rescan routers - is it a good place for this?
-        self.rescanRouters()
 
         template = self.loader.load(defaults.index_template_file)
         return template.generate(defaults=defaults,
@@ -385,7 +387,7 @@ class ULGCgi:
                                  default_sessionid=sessionid,
                                  result=Markup(session.getResult()) if (session.getResult()) else None,
                                  refresh=refresh,
-                                 getFormURL=self.decorator.getRuncommandURL
+                                 getFormURL=self.decorator_helper.getRuncommandURL
                                  ).render('html', doctype='html')
 
     def renderULGError(self,sessionid=None,**params):
@@ -404,7 +406,7 @@ class ULGCgi:
                                  default_sessionid=None,
                                  result=Markup(result_text) if(result_text) else None,
                                  refresh=0,
-                                 getFormURL=self.decorator.getRuncommandURL
+                                 getFormURL=self.decorator_helper.getRuncommandURL
                                  ).render('html', doctype='html')
     
     def renderULGDebug(self,**params):
@@ -422,7 +424,7 @@ class ULGCgi:
                                  default_sessionid=None,
                                  result=Markup(result_text) if(result_text) else None,
                                  refresh=0,
-                                 getFormURL=self.decorator.getRuncommandURL
+                                 getFormURL=self.decorator_helper.getRuncommandURL
                                  ).render('html', doctype='html')
 
     def index(self, **params):
@@ -446,25 +448,31 @@ class ULGCgi:
 # main
 
 if __name__=="__main__":
-    form = cgi.FieldStorage()
-    handler = ULGCgi()
+    try:
+        form = cgi.FieldStorage()
+        handler = ULGCgi()
 
-    print "Content-Type: text/html\n"
+        print "Content-Type: text/html\n"
 
-    action = form.getvalue('action',None)
-    params = dict([(k,form.getvalue(k)) for k in form.keys() if k != 'action'])
+        action = form.getvalue('action',None)
+        params = dict([(k,form.getvalue(k)) for k in form.keys() if k != 'action'])
     
-    if(action):
-        if(action == 'index'):
-            handler.index(**params)
-        if(action == 'runcommand'):
-            handler.runcommand(**params)
-        if(action == 'display'):
-            handler.display(**params)
-        if(action == 'error'):
-            handler.display(**params)
-        if(action == 'debug'):
-            handler.debug(**params)
+        if(action):
+            if(action == 'index'):
+                handler.index(**params)
+            elif(action == 'runcommand'):
+                handler.runcommand(**params)
+            elif(action == 'display'):
+                handler.display(**params)
+            elif(action == 'error'):
+                handler.display(**params)
+            elif(action == 'debug'):
+                handler.debug(**params)
+            else:
+                ulgmodel.log('ERROR: Unknown action called: '+action+'\n')
+                handler.display(**params)
 
-    else:
-        handler.index(**params)
+        else:
+            handler.index(**params)
+    except Exception as e:
+        ulgmodel.log("ERROR in CGI: "+traceback.format_exc())

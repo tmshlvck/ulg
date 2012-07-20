@@ -1,0 +1,34 @@
+<!--
+<pre xmlns="http://www.w3.org/1999/xhtml" xmlns:py="http://genshi.edgewall.org/">
+  <h1>DEBUG</h1>
+  ${str(table)}
+  ${str(table_header)}
+  ${str(table_headline)}
+</pre>
+-->
+
+<div id="resultbody" xmlns="http://www.w3.org/1999/xhtml" xmlns:py="http://genshi.edgewall.org/">
+  <py:if test="defined('table_headline') and (table_headline)">
+    <h3>${table_headline}</h3>
+  </py:if>
+  <py:if test="defined('before') and (before)">
+    ${before}
+  </py:if>
+  <table border="1">
+    <tr>
+      <py:for each="thidx,th in enumerate(table_header)">
+	<th bgcolor="#C0C0C0">${th}</th>
+      </py:for>
+    </tr>
+    <py:for each="tridx,tr in enumerate(table)">
+      <tr>
+	<py:for each="tdidx,td in enumerate(tr)">
+	  <td bgcolor="${td[1]}">${td[0]}</td>
+	</py:for>
+      </tr>
+    </py:for>
+  </table>
+  <py:if test="defined('after') and (after)">
+    ${after}
+  </py:if>
+</div>

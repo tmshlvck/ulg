@@ -37,7 +37,7 @@ import traceback
 def testRouterCommand(router=0,command=0,params=[]):
     r = config.routers[router]
     try:
-        if(not r.runCommand(r.listCommands()[command],params,ulg.Decorator())):
+        if(not r.runCommand(r.listCommands()[command],params,ulg.DecoratorHelper())):
             print "WARN: Outpit of test running command "+str(command)+" on router "+str(router)+" with parameters:"+str(params)+" is empty."
             return False
 
@@ -142,7 +142,7 @@ def testULGLock():
 def testULGRunParameter(router=0,command=4,params=['91.210.16.1']):
     r = config.routers[router]
     try:
-        if(not r.runCommand(r.listCommands()[command],params,ulg.Decorator())):
+        if(not r.runCommand(r.listCommands()[command],params,ulg.DecoratorHelper())):
             print "WARN: Output of test running command "+str(command)+" on router "+str(router)+" with parameters:"+str(params)+" is empty."
             return False
 
@@ -153,6 +153,16 @@ def testULGRunParameter(router=0,command=4,params=['91.210.16.1']):
 
     print "OK: Test running command "+str(command)+" on router "+str(router)+" with parameters:"+str(params)
     return True
+
+def testULGLog(testmessage="Test message no. 1."):
+    try:
+        ulgmodel.log(testmessage)
+        print "OK: Logging test. Check logfile for message: "+testmessage
+        return True
+    except Exception as e:
+        print "FAIL: Logging test."
+        print traceback.format_exc()
+        return False
 
 
 #####################################
@@ -186,6 +196,8 @@ if __name__=="__main__":
     runTest(testULGSessions())
 
     runTest(testULGLock())
+
+    runTest(testULGLog())
 
 
 

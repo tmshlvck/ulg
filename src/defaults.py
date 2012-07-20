@@ -34,7 +34,7 @@ default_bird_sock = '/var/run/bird.ctl'
 # Template dir relative to the index.py script
 template_dir = 'templates'
 index_template_file = 'index.html'
-display_template_file = 'display.html'
+table_decorator_template_file = 'tabledecorator.html'
 
 # Paths to external programs
 bin_ssh = '/usr/bin/ssh'
@@ -49,3 +49,7 @@ STRING_SESSION_OVERLIMIT = "<em>Limit of maximum concurrently running sessions a
 STRING_ARBITRARY_ERROR = "Error encountered. Operation aborted. See log for further details."
 STRING_IPADDRESS = "IP address"
 STRING_IPSUBNET = "IP subnet"
+
+# URL generator functions
+def getASNURL(asn):
+    return 'https://apps.db.ripe.net/search/query.html?searchtext=AS%s&flags=&sources=RIPE_NCC&grssources=&inverse=&types=' % asn

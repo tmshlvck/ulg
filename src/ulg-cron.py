@@ -35,11 +35,21 @@ class ULGCron:
     def __init__(self):
         pass
 
-    def run(self):
+    def rescanRouters(self):
+        for r in config.routers:
+            r.rescanHook()
+
+    def clearSessions(self):
         pass
+
+    def run(self):
+        ulgmodel.log("ULG cron run.")
+        self.rescanRouters()
+        self.clearSessions()
+        ulgmodel.log("ULG cron finished.")
 
 
 # main
 
 if __name__=="__main__":
-    return ULGCron().run()
+    sys.exit(ULGCron().run())

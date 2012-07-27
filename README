@@ -7,7 +7,8 @@ ULG development version 0.1
 
 Basic instalation procedure is:
 
-1) install prerequisites: Python 2.7, Genshi, Python CGI module and pexpect
+1) install prerequisites: Python 2.7, Genshi, Python CGI module, urllib
+   and pexpect
 2) deploy files in src directory to some place in WWW tree
 3) edit config.py to set up routers and credentials
 4) edit defaults.py to set up paths

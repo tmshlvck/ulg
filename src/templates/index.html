@@ -28,21 +28,21 @@
 		  <py:when test="param.getType() == 'select'">
 		    <td align="left">                                                                                                   \
 		      <select name="param${pidx}">                                                                                      \
-			<py:for each="paridx,parname in enumerate(param.getOptionNames())">
+			<py:for each="paridx,partuple in enumerate(param.getOptions())">
 			  <py:choose>
-			    <py:when test="default_routerid == ridx and default_commandid == cidx and defined('default_params') and pidx &lt; len(default_params) and paridx == int(default_params[pidx])">
-			      <option value="$paridx" selected="selected">                                                              \
-				${parname}                                                                                              \
+			    <py:when test="default_routerid == ridx and default_commandid == cidx and defined('default_params') and partuple[0] == default_params[pidx]">
+			      <option value="${partuple[0]}" selected="selected">                                                       \
+				${partuple[1]}                                                                                          \
 			      </option>                                                                                                 \
 			    </py:when>
-			    <py:when test="paridx == param.getDefault()">
-			      <option value="$paridx" selected="selected">                                                              \
-				${parname}                                                                                              \
+			    <py:when test="partuple[0] == param.getDefault()">
+			      <option value="${partuple[0]}" selected="selected">                                                       \
+				${partuple[1]}                                                                                          \
 			      </option>                                                                                                 \
 			    </py:when>
 			    <py:otherwise>
-			      <option value="$paridx">                                                                                  \
-				${parname}                                                                                              \
+			      <option value="${partuple[0]}">                                                                           \
+				${partuple[1]}                                                                                          \
 			      </option>                                                                                                 \
 			    </py:otherwise>
 			  </py:choose>
@@ -157,17 +157,17 @@
       </table>
     </form>
     <div id="result">
-      <hr/>
+      <hr py:if="(defined('result') and result) or (defined('refresh') and (refresh>0))"/>
       <py:choose>
 	<py:when test="defined('result') and result">
 	  ${result}
 	</py:when>
 	<py:otherwise>
-	  <em>No result.</em>
 	</py:otherwise>
       </py:choose>
       <p py:if="defined('refresh') and (refresh>0)">
-	<em>Refreshing in $refresh seconds.</em>
+	<em>Please wait for data from the router...</em><br/>
+	<em>The page is going to be refreshed in $refresh seconds.</em>
       </p>
     </div>
     <div id="footer">

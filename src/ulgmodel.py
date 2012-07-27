@@ -24,6 +24,8 @@ import re
 from time import localtime, strftime
 from genshi.template import TemplateLoader
 from genshi.core import Markup
+import pickle
+import fcntl
 
 import defaults
 
@@ -33,7 +35,7 @@ def log(*messages):
     try:
         with open(defaults.log_file, 'a') as l:
             for m in messages:
-                l.write(strftime("%b %d %Y %H:%M:%S: ", localtime()) + m)
+                l.write(strftime("%b %d %Y %H:%M:%S: ", localtime()) + m + "\n")
     except Exception:
         pass
 
@@ -41,18 +43,19 @@ def debug(message):
     log('DEBUG:' + message)
 
 
-class PersistentStorgage(object):
-    def __init__(self,filename=defaults.persistent_storage_file):
-        self.filename = filename
+class PersistentStorage(object):
+    def __init__(self):
         self.data = {}
 
-    def save(self):
-        f = open(self.filename,'wb')
+    def save(self,filename=defaults.persistent_storage_file):
+        # TODO: locking
+        f = open(filename,'wb')
         pickle.dump(self, f)
         f.close()
 
     @staticmethod
     def load(filename=defaults.persistent_storage_file):
+        # TODO: locking
         if(os.path.isfile(filename)):
             f = open(filename, 'rb')
             s = pickle.load(f)
@@ -66,6 +69,10 @@ class PersistentStorgage(object):
 
     def set(self,key,value):
         self.data[key] = value
+
+    def delete(self,key):
+        if(key in self.data.keys()):
+            del(self.data[key])
 
     def getDict(self):
         return self.data
@@ -140,9 +147,11 @@ class TextParameter(object):
         else:
             raise Exception("Invalid input encountered: Check did not passed.")
 
-class SelectionParameter(object):
-    def __init__(self,option_tuples=[],name=defaults.STRING_PARAMETER,default=0):
-        "option_tupes=[(name,value),(name2,value2),(name3equalsvalue3,),...]"
+
+class SelectionParameter(TextParameter):
+    def __init__(self,option_tuples=[],name=defaults.STRING_PARAMETER,default=None):
+        "option_tupes=[(value,name),(value2,name2),(value3equalsname3,),...]"
+        self.option_tuples = []
         self.setOptions(option_tuples)
         self.name=name
         self.default=default
@@ -150,41 +159,38 @@ class SelectionParameter(object):
     def getType(self):
         return 'select'
 
-    def getName(self):
-        return self.name
-
     def getDefault(self):
-        return self.default
+        if(self.default and (self.default in [v[0] for v in self.getOptions()])):
+            return self.default
+        else:
+            return self.getOptions()[0]
 
     def setOptions(self,option_tuples):
-        self.option_tuples=option_tuples
+        self.option_tuples = []
+        for o in option_tuples:
+            if(len(o) >= 2):
+                self.option_tuples.append(tuple((o[0],o[1],)))
+            elif(len(o) == 1):
+                self.option_tuples.append(tuple((o[0],o[0],)))
+            else:
+                raise Exception("Invalid option passed in SelectionParameter configuration. Zero-sized tuple.")
 
     def getOptions(self):
         return self.option_tuples
 
-    def getOptionNames(self):
-        return [o[0] for o in self.getOptions()]
-
     def checkInput(self,input):
-        index=0
-        try:
-            index=int(input)
-        except ValueError:
-            return False
-
-        if(index>=0 and index<len(self.getOptions())):
+        if(input and (input in [v[0] for v in self.getOptions()])):
             return True
         else:
             return False
 
     def normalizeInput(self,input):
+        log("DEBUG: returning selection parameterd input: "+str(input))
         if(self.checkInput(input)):
-            if(len(self.getOptions()[int(input)])==2):
-                return self.getOptions()[int(input)][1]
-            else:
-                return self.getOptions()[int(input)][0]
+            return input
         else:
-            raise Exception("Invalid input encountered: Check did not passed.")        
+            raise Exception("Invalid input encountered: Check did not passed.")
+
 
 class TextCommand(object):
     def __init__(self,command,param_specs=[],name=None):
@@ -221,7 +227,6 @@ class TextCommand(object):
 
         return True
 
-    
     def normalizeParameters(self,parameters):
         if parameters == None:
             return [] 
@@ -266,7 +271,7 @@ class AnyCommand(TextCommand):
 
 class Router(object):
     def __init__(self):
-        self.setCommands({})
+        self.setCommands([])
         self.setName('')
 
     def setName(self,name):

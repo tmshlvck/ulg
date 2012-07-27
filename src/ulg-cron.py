@@ -23,6 +23,7 @@ import os, sys
 import random
 import time
 import pickle
+import re
 
 import config
 import defaults
@@ -30,6 +31,8 @@ import defaults
 import ulgmodel
 
 ### ULG cron script
+
+SESSION_FILE_REGEX='^ulg-.*\.session$'
 
 class ULGCron:
     def __init__(self):
@@ -40,13 +43,21 @@ class ULGCron:
             r.rescanHook()
 
     def clearSessions(self):
-        pass
+        sre = re.compile(SESSION_FILE_REGEX)
+        for file in os.listdir(defaults.session_dir):
+            if sre.match(file):
+                fp = defaults.session_dir+'/'+file
+                ulgmodel.log('Removing file '+fp)
+                try:
+                    os.unlink(fp)
+                except OSError as e:
+                    ulgmodel.log('Error while removing file '+fp+' '+str(e))
 
     def run(self):
-        ulgmodel.log("ULG cron run.")
+        ulgmodel.log('ULG cron run.')
         self.rescanRouters()
         self.clearSessions()
-        ulgmodel.log("ULG cron finished.")
+        ulgmodel.log('ULG cron finished.')
 
 
 # main

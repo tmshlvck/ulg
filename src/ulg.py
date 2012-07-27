@@ -30,6 +30,7 @@ import md5
 import pickle
 import re
 import fcntl
+import urllib
 import traceback
 
 import config
@@ -163,9 +164,9 @@ class DecoratorHelper:
         return os.path.basename(__file__)
 
     def getURL(self,action,parameters={}):
-        url=self.getScriptURL() + ("?action=%s" % action)
+        url=self.getScriptURL() + ("?action=%s" % urllib.quote(action))
         for k in parameters.keys():
-            url = url + '&' + k + '=' + parameters[k]
+            url = url + '&' + k + '=' + urllib.quote(parameters[k])
         return url
 
     def getIndexURL(self):
@@ -201,7 +202,7 @@ class DecoratorHelper:
         return ('<pre>%s</pre>' % text)
 
     def ahref(self,url,text):
-        return ('<a href=%s>%s</a>' % (url,text))
+        return ('<a href=%s>%s</a>' % (str(url),str(text)))
 
 class ULGCgi:
     def __init__(self):
@@ -354,11 +355,11 @@ class ULGCgi:
         session.cleanParameters()
         for pidx,ps in enumerate(session.getCommand().getParamSpecs()):
             if('param'+str(pidx) in moreparams.keys()):
-                session.addParameter(moreparams['param'+str(pidx)])
+                session.addParameter(str(moreparams['param'+str(pidx)]))
             else:
                 session.addParameter(ps.getDefault())
 
-        # run the command (possibly in a separate thread)
+        # run the command (possibly in a separate process)
         self.runCommand(session)
 
         # redirect to the session display

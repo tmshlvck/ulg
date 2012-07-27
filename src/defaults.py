@@ -25,6 +25,7 @@ usage_limit = 1                                  # maximum concurrently processe
 # Settings defaults
 always_start_thread = True
 debug = False
+rescan_on_display = False
 persistent_storage_file = '/tmp/ulg.data'
 session_dir = '/tmp'
 usage_counter_file = '/tmp/ulg.lock'
@@ -49,6 +50,9 @@ STRING_SESSION_OVERLIMIT = "<em>Limit of maximum concurrently running sessions a
 STRING_ARBITRARY_ERROR = "Error encountered. Operation aborted. See log for further details."
 STRING_IPADDRESS = "IP address"
 STRING_IPSUBNET = "IP subnet"
+STRING_MACADDRESS = "MAC address"
+STRING_NONEORINTORIPADDRESS = "None or Interface or IP address"
+STRING_INTERFACE = "Interface"
 
 # URL generator functions
 def getASNURL(asn):

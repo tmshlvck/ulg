@@ -164,6 +164,42 @@ def testULGLog(testmessage="Test message no. 1."):
         print traceback.format_exc()
         return False
 
+def testULGRescan():
+    try:
+        for r in config.routers:
+            r.rescanHook()
+
+        print "OK: Test running rescan."
+        return True
+    except Exception as e:
+        print "FAIL: Test running rescan.\n  Exception="+str(e)
+        print traceback.format_exc()
+        return False
+
+def testULGPersistentStorage():
+    try:
+        ps = ulgmodel.PersistentStorage.load()
+        ps.set('test','teststring')
+        ps.save()
+
+        ps2 = ulgmodel.PersistentStorage.load()
+        if(ps2.get('test') == 'teststring'):
+            ps2.delete('test')
+            if(ps2.get('test') == None):
+                print "OK: Test persistent storage."
+                return True
+            else:
+                print "FAIL: Test persistent storage: Delete performed no effect."
+                return False
+        else:
+            print "FAIL: Test persistent storage: Set performed no effect."
+            return False
+    except Exception as e:
+        print "FAIL: Test persistent storage.\n  Exception="+str(e)
+        print traceback.format_exc()
+        return False  
+
+
 
 #####################################
 results = []
@@ -198,6 +234,10 @@ if __name__=="__main__":
     runTest(testULGLock())
 
     runTest(testULGLog())
+
+    runTest(testULGRescan())
+
+    runTest(testULGPersistentStorage())
 
 
 

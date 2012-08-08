@@ -27,6 +27,7 @@ import defaults
 
 import ulgmodel
 import ulg
+import ulgcisco
 
 import sys
 import re
@@ -199,6 +200,67 @@ def testULGPersistentStorage():
         print traceback.format_exc()
         return False  
 
+def testULGCiscoParser(header,cisco_input,expect):
+    try:
+        res = ulgcisco.matchCiscoBGPLines(header,cisco_input)
+
+#        print "DEBUG: Cisco parser input: " + str(cisco_input)
+#        print "DEBUG: Cisco parser output: " + str(res)
+
+        if(res == expect):
+            print "OK: Test Cisco parser."
+            return True
+        else:
+            print "DEBUG: Cisco parser input: " + str(cisco_input)
+            print "DEBUG: Cisco parser output: " + str(res)
+            print "FAIL: Test Cisco parser. Wrong output."
+            return False
+
+    except Exception as e:
+        print "FAIL: Test Cisco parser.\n  Exception="+str(e)
+        print traceback.format_exc()
+        return False  
+
+
+def testULGCiscoParser1():
+    header = "Stat Network          Next_Hop            Metric LocPrf Weight Path"
+    cisco_input = """ *>  62.109.128.0/19  0.0.0.0                  0         32768 i
+ *>  91.199.207.0/24  217.31.48.86                 1024      0 44672 i
+ *>  91.224.58.0/23   217.31.48.70           100   1024      0 50833 i
+ *>  93.170.16.0/21   217.31.48.70           100   1024      0 50833 i
+ *>  188.227.128.0/19 0.0.0.0                  0         32768 i
+ *>  217.31.48.0/20   0.0.0.0                  0         32768 i"""
+
+    expect = [['*>', '62.109.128.0/19', '0.0.0.0', '0', '', '32768', 'i'],
+              ['*>', '91.199.207.0/24', '217.31.48.86', '', '1024', '0', '44672 i'],
+              ['*>', '91.224.58.0/23', '217.31.48.70', '100', '1024', '0', '50833 i'],
+              ['*>', '93.170.16.0/21', '217.31.48.70', '100', '1024', '0', '50833 i'],
+              ['*>', '188.227.128.0/19', '0.0.0.0', '0', '', '32768', 'i'],
+              ['*>', '217.31.48.0/20', '0.0.0.0', '0', '', '32768', 'i']]
+
+
+    return testULGCiscoParser(header,cisco_input.splitlines(),expect)
+
+def testULGCiscoParser2():
+    header = "Stat Network          Next_Hop            Metric LocPrf Weight Path"
+    cisco_input = " *   195.226.217.0    62.109.128.9                           0 51278 i"
+    expect = [['*', '195.226.217.0', '62.109.128.9', '', '', '0', '51278 i']]
+
+    return testULGCiscoParser(header,cisco_input.splitlines(),expect)
+
+def testULGCiscoParser3():
+    header = "Stat Network          Next_Hop            Metric LocPrf Weight Path"
+    cisco_input = """ *>  2001:67C:278::/48
+                       2001:1AB0:7E1F:1:230:48FF:FE8C:A192
+                                                    1024      0 51278 i
+ *>  2001:1AB0::/32   ::                       0         32768 i
+ *>  2A01:8C00::/32   ::                       0         32768 i"""
+    expect = [['*>', '2001:67C:278::/48', '2001:1AB0:7E1F:1:230:48FF:FE8C:A192', '', '1024', '0', '51278 i'],
+              ['*>', '2001:1AB0::/32', '::', '0', '', '32768', 'i'],
+              ['*>', '2A01:8C00::/32', '::', '0', '', '32768', 'i']]
+
+    return testULGCiscoParser(header,cisco_input.splitlines(),expect)
+
 
 
 #####################################
@@ -222,23 +284,17 @@ Tests failed: %d/%d""" % (len(passed),tests,len(failed),tests)
 # main
 if __name__=="__main__":
     runTest(testRouterCommand(router=0,command=0,params=[]))
-
     runTest(testULGRunParameter(router=0,command=4,params=['91.210.16.1']))
-
     runTest(testULGIndex(routerid=0,commandid=0,sessionid=None))
-
     runTest(testULGAction(routerid=0,commandid=0,sessionid=None,maxtimes=10,interval=5,**{}))
-
     runTest(testULGSessions())
-
     runTest(testULGLock())
-
     runTest(testULGLog())
-
     runTest(testULGRescan())
-
     runTest(testULGPersistentStorage())
-
+    runTest(testULGCiscoParser1())
+    runTest(testULGCiscoParser2())
+    runTest(testULGCiscoParser3())
 
 
     reportResults()

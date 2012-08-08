@@ -14,20 +14,22 @@
   <py:if test="defined('before') and (before)">
     ${before}
   </py:if>
-  <table border="1">
-    <tr>
-      <py:for each="thidx,th in enumerate(table_header)">
-	<th bgcolor="#C0C0C0">${th}</th>
-      </py:for>
-    </tr>
-    <py:for each="tridx,tr in enumerate(table)">
+  <py:if test="defined('table_header') and defined('table') and len(table_header) > 0 and len(table) > 0">
+    <table border="1">
       <tr>
-	<py:for each="tdidx,td in enumerate(tr)">
-	  <td bgcolor="${td[1]}">${td[0]}</td>
+	<py:for each="thidx,th in enumerate(table_header)">
+	  <th bgcolor="#C0C0C0">${th}</th>
 	</py:for>
       </tr>
-    </py:for>
-  </table>
+      <py:for each="tridx,tr in enumerate(table)">
+	<tr>
+	  <py:for each="tdidx,td in enumerate(tr)">
+	    <td bgcolor="${td[1]}">${td[0]}</td>
+	  </py:for>
+	</tr>
+      </py:for>
+    </table>
+  </py:if>
   <py:if test="defined('after') and (after)">
     ${after}
   </py:if>

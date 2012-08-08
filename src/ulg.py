@@ -225,7 +225,7 @@ class ULGCgi:
 
             # Acquire lock
             fcntl.lockf(lf, fcntl.LOCK_EX)
-        except IOError,ValueError:
+        except (IOError,ValueError) as e:
             ulgmodel.log("Locking mechanism failure: "+str(e))
             return False
 

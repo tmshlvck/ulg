@@ -466,7 +466,7 @@ if __name__=="__main__":
             elif(action == 'display'):
                 handler.display(**params)
             elif(action == 'error'):
-                handler.display(**params)
+                handler.error(**params)
             elif(action == 'debug'):
                 handler.debug(**params)
             else:

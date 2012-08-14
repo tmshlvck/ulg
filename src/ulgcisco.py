@@ -355,6 +355,30 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
                                                       name=defaults.STRING_IPADDRESS)
         ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
 
+    def _decorateASPath(self,path,decorator_helper):
+        result = ''
+        for asnm in re.compile('[^\s]+').finditer(path):
+            asn = asnm.group(0)
+            if(asn.isdigit()):
+                result = result + ' ' + decorator_helper.ahref(defaults.getASNURL(asn),asn)
+            else:
+                if(re.match('^\s*{[0-9,]+}\s*', asn)):
+                    result = result + '{'
+                    isnext = False
+                    for sasnm in re.compile('[0-9]+').finditer(asn):
+                        sasn = sasnm.group(0)
+                        if(sasn.isdigit()):
+                            if(isnext):
+                                result = result + ',' + decorator_helper.ahref(defaults.getASNURL(sasn),sasn)
+                            else:
+                                isnext = True
+                                result = result + decorator_helper.ahref(defaults.getASNURL(sasn),sasn)
+                    result = result + '}'
+                else:
+                    result = result + ' ' +asn
+
+        return result
+
     def _genTable(self,table_lines,decorator_helper,router):
         mls = matchCiscoBGPLines(self.table_header,table_lines)
 
@@ -363,12 +387,12 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
             # generate table content
             result.append([
                     (ml[0],),
-                    (ml[1],),
+                    (decorator_helper.ahref(defaults.getIPPrefixURL(ml[1]),ml[1]),),
                     (ml[2],),
                     (ml[3],),
                     (ml[4],),
                     (ml[5],),
-                    (ml[6],),
+                    (self._decorateASPath(ml[6],decorator_helper),),
                     ])
         return result
 
@@ -495,7 +519,7 @@ class CiscoRouter(ulgmodel.RemoteRouter):
         peers = []
         rlr = re.compile(regexp)
         if ipv6:
-            lines = normalizeBGPIPv6SplitLines(str.splitlines(table))
+            lines = normalizeBGPIPv6SumSplitLines(str.splitlines(table))
         else:
             lines = str.splitlines(table)
         for tl in lines:

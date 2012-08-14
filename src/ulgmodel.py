@@ -185,7 +185,7 @@ class SelectionParameter(TextParameter):
             return False
 
     def normalizeInput(self,input):
-        log("DEBUG: returning selection parameterd input: "+str(input))
+        log("DEBUG: returning selection parameter input: "+str(input))
         if(self.checkInput(input)):
             return input
         else:

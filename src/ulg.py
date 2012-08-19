@@ -298,6 +298,7 @@ class ULGCgi:
 
                 # define trivial thread function
                 def commandThreadBody(session,decreaseUsageMethod):
+                    ulgmodel.debug("Running command: "+session.getCommand().getName())
                     try:
                         session.setResult(session.getRouter().runCommand(session.getCommand(),session.getParameters(),self.decorator_helper))
                         session.setFinished()
@@ -306,6 +307,7 @@ class ULGCgi:
                         session.setPreResult(traceback.format_exc())
                         session.setFinished()
                     finally:
+                        ulgmodel.debug("Command finished: "+session.getCommand().getName())
                         decreaseUsageMethod()
 
                 # fork a daemon process (fork two time to decouple with parent)

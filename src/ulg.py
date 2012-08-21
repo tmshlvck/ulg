@@ -301,16 +301,15 @@ class ULGCgi:
                     ulgmodel.debug("Running command: "+session.getCommand().getName())
                     try:
                         session.setResult(session.getRouter().runCommand(session.getCommand(),session.getParameters(),self.decorator_helper))
-                        session.setFinished()
                     except Exception as e:
                         ulgmodel.log("ERROR: Exception occured while running a command:" + traceback.format_exc())
-                        session.setPreResult(traceback.format_exc())
-                        session.setFinished()
+                        session.setPreResult("ERROR in commandThreadBody:\n"+traceback.format_exc())
                     finally:
                         ulgmodel.debug("Command finished: "+session.getCommand().getName())
+                        session.setFinished()
                         decreaseUsageMethod()
 
-                # fork a daemon process (fork two time to decouple with parent)
+                # fork a daemon process (fork two times to decouple with parent)
                 sys.stdout.flush()
                 child_pid = os.fork()
                 if(child_pid == 0):

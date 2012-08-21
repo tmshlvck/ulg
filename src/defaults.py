@@ -31,6 +31,7 @@ session_dir = '/tmp'
 usage_counter_file = '/tmp/ulg.lock'
 log_file = '/tmp/ulg.log'
 default_bird_sock = '/var/run/bird.ctl'
+default_bird_sock_timeout = 30
 
 # Template dir relative to the index.py script
 template_dir = 'templates'
@@ -53,6 +54,7 @@ STRING_IPSUBNET = "IP subnet"
 STRING_MACADDRESS = "MAC address"
 STRING_NONEORINTORIPADDRESS = "None or Interface or IP address"
 STRING_INTERFACE = "Interface"
+STRING_SOCKET_TIMEOUT = "Socket communication timed out. See log."
 
 # URL generator functions
 def getASNURL(asn):

@@ -302,6 +302,8 @@ class Router(object):
             log("Bad params encountered in command "+str(command.getName())+" : "+str(parameters))
             return self.returnError(defaults.STRING_BAD_PARAMS)
 
+        debug("Going to run command "+c+" on router "+self.getName())
+
         r = ''
         if(defaults.debug):
             r = "<h3>DEBUG</h3><pre>Router.runCommand():\ncommand_name="+command.getName()+'\n'

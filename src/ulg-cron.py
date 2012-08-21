@@ -19,9 +19,9 @@
 
 
 # Imports
-import os, sys
+import os, os.path, sys
 import random
-import time
+import time, datetime
 import pickle
 import re
 
@@ -47,11 +47,16 @@ class ULGCron:
         for file in os.listdir(defaults.session_dir):
             if sre.match(file):
                 fp = defaults.session_dir+'/'+file
-                ulgmodel.log('Removing file '+fp)
-                try:
-                    os.unlink(fp)
-                except OSError as e:
-                    ulgmodel.log('Error while removing file '+fp+' '+str(e))
+
+                now = datetime.datetime.now()
+                if(datetime.datetime.fromtimestamp(os.path.getmtime(fp)) < now+datetime.timedelta(hours=-1)):
+                    ulgmodel.log('Removing file '+fp)
+                    try:
+                        os.unlink(fp)
+                    except OSError as e:
+                        ulgmodel.log('Error while removing file '+fp+' '+str(e))
+                else:
+                    ulgmodel.log('Not removing file '+fp+' because it is not at least 1 hour old.')
 
     def run(self):
         ulgmodel.log('ULG cron run.')

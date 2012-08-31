@@ -213,13 +213,24 @@ class BirdShowProtocolsCommand(ulgmodel.TextCommand):
             return ulgmodel.TableDecorator(table,table_header).decorate()
 
 
-class BirdShowProtocolsAllCommand(ulgmodel.TextCommand):
-    COMMAND_TEXT = 'show protocols all %s'
+class BirdBGPPeerSelectCommand(ulgmodel.TextCommand):
+    """ Abstract class for all BIRD BGP peer-specific commands """
 
     def __init__(self,peers,name=None):
         peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
                                                  name=defaults.STRING_PEERID)
         ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
+
+class BirdShowProtocolsAllCommand(BirdBGPPeerSelectCommand):
+    COMMAND_TEXT = 'show protocols all %s'
+
+class BirdShowRouteExportCommand(BirdBGPPeerSelectCommand):
+    COMMAND_TEXT = 'show route export %s'
+
+class BirdShowRouteProtocolCommand(BirdBGPPeerSelectCommand):
+    COMMAND_TEXT = 'show route protocol %s'
+
+
 
 
 class BirdRouterLocal(ulgmodel.LocalRouter):
@@ -239,6 +250,8 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
     def _getDefaultCommands(self):
         return [BirdShowProtocolsCommand(),
                 BirdShowProtocolsAllCommand(self.getBGPPeers()),
+                BirdShowRouteProtocolCommand(self.getBGPPeers()),
+                BirdShowRouteExportCommand(self.getBGPPeers()),
                 ]
 
     def runRawCommand(self,command):

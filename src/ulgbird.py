@@ -152,7 +152,7 @@ def normalizeBirdSockLine(line):
     raise Exception("Can not normalize line: "+line)
 
 
-def parseShowProtocols(line):
+def parseShowProtocolsLine(line):
     sh_proto_line_regexp = re.compile(BIRD_SHOW_PROTO_LINE_REGEXP)
     m = sh_proto_line_regexp.match(line)
     if(m):
@@ -163,8 +163,27 @@ def parseShowProtocols(line):
             res.append(m.group(6))
         return res
     else:
-        ulgmodel.debug("bird.parseShowProtocols failed to match line: "+line)
         return None
+#        raise Exception("bird.parseShowProtocolsLine failed to match line: "+line)
+
+def parseShowProtocols(text):
+    header = []
+    table = []
+    for l in str.splitlines(text):
+        if(re.match('^\s*$',l)):
+            continue
+        
+        hm = re.match(BIRD_SHOW_PROTO_HEADER_REGEXP,l)
+        if(hm):
+            header = hm.groups()
+        else:
+            pl = parseShowProtocolsLine(l)
+            if(pl):
+                table.append(pl)
+            else:
+                ulgmodel.log("ulgbird.parseShowProtocols skipping unparsable line"+l)
+
+    return (header,table)
 
 
 # classes
@@ -175,47 +194,52 @@ class BirdShowProtocolsCommand(ulgmodel.TextCommand):
     def __init__(self,name=None):
         ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[],name=name)
 
-    def _decorateTableLine(self,line,router,decorator_helper):
-        lg = parseShowProtocols(line)
-        ulgmodel.debug("bird._decorateTableLine lg="+str(lg))
-        if(lg):
-            return [(lgm,ulgmodel.TableDecorator.GREEN) for lgm in lg]
-        else:
-            ulgmodel.log("BirdShowProtocolsCommand._decorateTableLine(): Skipping unparsable line: "+line)
-            return None
+
+    def _decorateTableLine(self,table_line,router,decorator_helper):
+        return [(tlg,ulgmodel.TableDecorator.GREEN) for tlg in table_line]
+
 
     def decorateResult(self,result,router=None,decorator_helper=None):
         if((not router) or (not decorator_helper)):
             return "<pre>\n%s\n</pre>" % result
         else:
-            table_header = []
+            pr = parseShowProtocols(result)
+            table_header = pr[0]
             table = []
-            for l in str.splitlines(result):
-                if(re.match('^\s*$',l)):
-                    continue
 
-                hm = re.match(BIRD_SHOW_PROTO_HEADER_REGEXP,l)
-                if(hm):
-                    table_header = hm.groups()
-                else:
-                    tl = self._decorateTableLine(l,router,decorator_helper)
-                    if(tl):
-                        table.append(tl)
+            for tl in pr[1]:
+                table.append(self._decorateTableLine(tl,router,decorator_helper))
 
             return ulgmodel.TableDecorator(table,table_header).decorate()
 
 
+class BirdShowProtocolsAllCommand(ulgmodel.TextCommand):
+    COMMAND_TEXT = 'show protocols all %s'
+
+    def __init__(self,peers,name=None):
+        peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
+                                                 name=defaults.STRING_PEERID)
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
+
+
 class BirdRouterLocal(ulgmodel.LocalRouter):
-    DefaultCommands = [BirdShowProtocolsCommand()]
+    RESCAN_BGP_COMMAND = 'show protocols'
 
     def __init__(self,sock=defaults.default_bird_sock,commands=None):
         super(self.__class__,self).__init__()
+        self.sock = sock
+        self.setName('localhost')
+
+        # command autoconfiguration may be run only after other parameters are set
         if(commands):
             self.setCommands(commands)
         else:
-            self.setCommands(BirdRouterLocal.DefaultCommands)
-        self.sock = sock
-        self.setName('localhost')
+            self.setCommands(self._getDefaultCommands())
+
+    def _getDefaultCommands(self):
+        return [BirdShowProtocolsCommand(),
+                BirdShowProtocolsAllCommand(self.getBGPPeers()),
+                ]
 
     def runRawCommand(self,command):
         result=''
@@ -261,61 +285,25 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
 
         return result
 
-#################################
     def getForkNeeded(self):
         return False
-"""
-    def rescanBGPPeers(self,command,regexp,ipv6=True):
-        table = self.runRawCommand(command)
+
+
+    def rescanBGPPeers(self):
+        res = self.runRawCommand(self.RESCAN_BGP_COMMAND)
+        psp = parseShowProtocols(res)
 
         peers = []
-        rlr = re.compile(regexp)
-        if ipv6:
-            lines = normalizeBGPIPv6SumSplitLines(str.splitlines(table))
-        else:
-            lines = str.splitlines(table)
-        for tl in lines:
-            rlrm = rlr.match(tl)
-            if(rlrm):
-                peers.append(rlrm.group(1))
+        for pspl in psp[1]:
+            if(pspl[1] == "BGP"):
+                peers.append(pspl[0])
 
         return peers
 
-    def rescanBGPIPv4Peers(self):
-        self.bgp_ipv4_peers = self.rescanBGPPeers(RESCAN_BGP_IPv4_COMMAND,BGP_IPV4_TABLE_LINE_REGEXP,False)
 
-    def rescanBGPIPv6Peers(self):
-        self.bgp_ipv6_peers = self.rescanBGPPeers(RESCAN_BGP_IPv6_COMMAND,BGP_IPV6_TABLE_LINE_REGEXP,True)
-        
-    def rescanHook(self):
-        self.rescanBGPIPv4Peers()
-        self.rescanBGPIPv6Peers()
-        self.saveBGPPeers()
-
-    def getBGPIPv4Peers(self):
-        return self.bgp_ipv4_peers
+    def getBGPPeers(self):
+        return self.rescanBGPPeers()
 
     def getBGPIPv6Peers(self):
         return self.bgp_ipv6_peers
 
-    def saveBGPPeers(self):
-        key4 = self.getHost() + self.PS_KEY_BGPV4
-        key6 = self.getHost() + self.PS_KEY_BGPV6
-
-        ps = ulgmodel.PersistentStorage.load()
-        ps.set(key4,self.getBGPIPv4Peers())
-        ps.set(key6,self.getBGPIPv6Peers())
-        ps.save()
-
-    def loadBGPPeers(self):
-        key4 = self.getHost() + self.PS_KEY_BGPV4
-        key6 = self.getHost() + self.PS_KEY_BGPV6
-
-        ps = ulgmodel.PersistentStorage.load()
-        self.bgp_ipv4_peers = ps.get(key4)
-        self.bgp_ipv6_peers = ps.get(key6)
-
-        if(not self.getBGPIPv4Peers()) or (not self.getBGPIPv6Peers()):
-            self.rescanHook()
-
-"""

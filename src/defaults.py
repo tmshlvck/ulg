@@ -55,6 +55,7 @@ STRING_MACADDRESS = "MAC address"
 STRING_NONEORINTORIPADDRESS = "None or Interface or IP address"
 STRING_INTERFACE = "Interface"
 STRING_SOCKET_TIMEOUT = "Socket communication timed out. See log."
+STRING_PEERID = "Peer ID"
 
 # URL generator functions
 def getASNURL(asn):

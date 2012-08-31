@@ -117,7 +117,7 @@ class TableDecorator(object):
                                  table_headline=Markup(self.table_headline) if self.table_headline else '',
                                  before=Markup(self.before) if self.before else '',
                                  after=Markup(self.after) if self.after else '',
-                                 ).render('html', doctype='html')
+                                 ).render('html')
 
 
 class TextParameter(object):

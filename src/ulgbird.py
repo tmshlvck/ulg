@@ -80,93 +80,22 @@ BIRD_SHOW_PROTO_HEADER_REGEXP='^\s*(name)\s+(proto)\s+(table)\s+(state)\s+(since
 bird_sock_header_regexp = re.compile(BIRD_SOCK_HEADER_REGEXP)
 bird_sock_reply_end_regexp = re.compile(BIRD_SOCK_REPLY_END_REGEXP)
 
-def isBirdSockTableStart(line):
-    if(bird_sock_header_regexp.match(line)):
-        return True
-    else:
-        return False
+
+def parseBirdShowProtocols(text):
+    def parseShowProtocolsLine(line):
+        sh_proto_line_regexp = re.compile(BIRD_SHOW_PROTO_LINE_REGEXP)
+        m = sh_proto_line_regexp.match(line)
+        if(m):
+            res = list(m.groups()[0:5])
+            if(m.group(6)):
+                res.append(m.group(6))
+
+            return res
+        else:
+            ulgmodel.debug("bird.parseShowProtocolsLine failed to match line: "+line)
+            return None
 
 
-def getBirdSockCode(line):
-    m = bird_sock_header_regexp.match(line)
-    if(m):
-        return int(m.group(1))
-    else:
-        None
-
-
-def getBirdSockData(line):
-    m = bird_sock_header_regexp.match(line)
-    if(m):
-        return m.group(2)
-    else:
-        None
-
-
-def isBirdSockHeader(line):
-    if(isBirdSockTableStart(line) and getBirdSockCode(line) == 2002):
-        return True
-    else:
-        return False
-
-
-def isBirdSockReplyEnd(line):
-    m = bird_sock_reply_end_regexp.match(line)
-    if(m):
-        if(int(m.group(1)) == 0):
-            return True
-
-    return False
-
-
-def isBirdSockAsyncReply(line):
-    if(line[0] == '+'):
-        return True
-    else:
-        return False
-
-
-def isBirdSockReplyCont(line):
-    if(line[0] == ' '):
-        return True
-    else:
-        return False
-
-def normalizeBirdSockLine(line):
-    ulgmodel.debug("normalizeBirdSockLine: "+line)
-    if(isBirdSockAsyncReply(line)):
-        return ''
-
-    if(isBirdSockHeader(line)):
-        return getBirdSockData(line)
-
-    if(isBirdSockTableStart(line)):
-        return getBirdSockData(line)
-
-    if(isBirdSockReplyCont(line)):
-        return line[1:]
-
-    if(isBirdSockReplyEnd(line)):
-        return None
-
-    raise Exception("Can not normalize line: "+line)
-
-
-def parseShowProtocolsLine(line):
-    sh_proto_line_regexp = re.compile(BIRD_SHOW_PROTO_LINE_REGEXP)
-    m = sh_proto_line_regexp.match(line)
-    if(m):
-        ulgmodel.debug("bird.parseShowProtocols matched line: "+line)
-        ulgmodel.debug("bird.parseShowProtocols match results: "+str(m.groups()[0:-2]))
-        res = list(m.groups()[0:5])
-        if(m.group(6)):
-            res.append(m.group(6))
-        return res
-    else:
-        return None
-#        raise Exception("bird.parseShowProtocolsLine failed to match line: "+line)
-
-def parseShowProtocols(text):
     header = []
     table = []
     for l in str.splitlines(text):
@@ -181,7 +110,7 @@ def parseShowProtocols(text):
             if(pl):
                 table.append(pl)
             else:
-                ulgmodel.log("ulgbird.parseShowProtocols skipping unparsable line"+l)
+                ulgmodel.log("ulgbird.parseBirdShowProtocols skipping unparsable line"+l)
 
     return (header,table)
 
@@ -203,7 +132,7 @@ class BirdShowProtocolsCommand(ulgmodel.TextCommand):
         if((not router) or (not decorator_helper)):
             return "<pre>\n%s\n</pre>" % result
         else:
-            pr = parseShowProtocols(result)
+            pr = parseBirdShowProtocols(result)
             table_header = pr[0]
             table = []
 
@@ -241,7 +170,7 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
         self.sock = sock
         self.setName('localhost')
 
-        # command autoconfiguration may be run only after other parameters are set
+        # command autoconfiguration might run only after other parameters are set
         if(commands):
             self.setCommands(commands)
         else:
@@ -255,6 +184,73 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
                 ]
 
     def runRawCommand(self,command):
+        def isBirdSockTableStart(line):
+            if(bird_sock_header_regexp.match(line)):
+                return True
+            else:
+                return False
+
+        def getBirdSockCode(line):
+            m = bird_sock_header_regexp.match(line)
+            if(m):
+                return int(m.group(1))
+            else:
+                None
+
+        def getBirdSockData(line):
+            m = bird_sock_header_regexp.match(line)
+            if(m):
+                return m.group(2)
+            else:
+                None
+
+        def isBirdSockHeader(line):
+            if(isBirdSockTableStart(line) and getBirdSockCode(line) == 2002):
+                return True
+            else:
+                return False
+
+        def isBirdSockReplyEnd(line):
+            m = bird_sock_reply_end_regexp.match(line)
+            if(m):
+                if(int(m.group(1)) == 0):
+                    return True
+
+            return False
+
+        def isBirdSockAsyncReply(line):
+            if(line[0] == '+'):
+                return True
+            else:
+                return False
+
+
+        def isBirdSockReplyCont(line):
+            if(line[0] == ' '):
+                return True
+            else:
+                return False
+
+        def normalizeBirdSockLine(line):
+            ulgmodel.debug("normalizeBirdSockLine: "+line)
+            if(isBirdSockAsyncReply(line)):
+                return ''
+
+            if(isBirdSockHeader(line)):
+                return getBirdSockData(line)
+
+            if(isBirdSockTableStart(line)):
+                return getBirdSockData(line)
+
+            if(isBirdSockReplyCont(line)):
+                return line[1:]
+
+            if(isBirdSockReplyEnd(line)):
+                return None
+
+            raise Exception("Can not normalize line: "+line)
+
+
         result=''
 
         try:
@@ -304,7 +300,7 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
 
     def rescanBGPPeers(self):
         res = self.runRawCommand(self.RESCAN_BGP_COMMAND)
-        psp = parseShowProtocols(res)
+        psp = parseBirdShowProtocols(res)
 
         peers = []
         for pspl in psp[1]:

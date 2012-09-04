@@ -120,8 +120,25 @@ def parseBirdShowProtocols(text):
 class BirdShowProtocolsCommand(ulgmodel.TextCommand):
     COMMAND_TEXT = 'show protocols'
 
-    def __init__(self,name=None):
+    def __init__(self,name=None,show_proto_all_command=None,proto_filter=None):
         ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[],name=name)
+        self.show_proto_all_command = show_proto_all_command
+        self.fltr = proto_filter
+
+    def _getPeerURL(self,decorator_helper,router,peer_id):
+        if decorator_helper and self.show_proto_all_command:
+            return decorator_helper.getRuncommandURL({'routerid':str(decorator_helper.getRouterID(router)),
+                                                      'commandid':str(decorator_helper.getCommandID(router,self.show_proto_all_command)),
+                                                      'param0':peer_id})
+        else:
+            return None
+
+    def _getPeerTableCell(self,decorator_helper,router,peer_id):
+        url = self._getPeerURL(decorator_helper,router,peer_id)
+        if(url):
+            return decorator_helper.ahref(url,peer_id)
+        else:
+            return peer_id
 
     def _decorateTableLine(self,table_line,router,decorator_helper):
         def _getTableLineColor(state):
@@ -133,7 +150,16 @@ class BirdShowProtocolsCommand(ulgmodel.TextCommand):
                 return ulgmodel.TableDecorator.RED
 
         color = _getTableLineColor(table_line[3])
-        return [(tlg,color) for tlg in table_line]
+        tl = [(self._getPeerTableCell(decorator_helper,router,table_line[0]),color),
+              (table_line[1],color),
+              (table_line[2],color),
+              (table_line[3],color),
+              (table_line[4],color),
+              ]
+        if(len(table_line)>5):
+            tl.append((table_line[5],color))
+
+        return tl
 
 
     def decorateResult(self,result,router=None,decorator_helper=None):
@@ -145,6 +171,9 @@ class BirdShowProtocolsCommand(ulgmodel.TextCommand):
             table = []
 
             for tl in pr[1]:
+                # skip when there is a filter and it does not match the protocol type
+                if(self.fltr) and (not re.match(self.fltr,tl[1])):
+                    continue
                 table.append(self._decorateTableLine(tl,router,decorator_helper))
 
             return ulgmodel.TableDecorator(table,table_header).decorate()
@@ -171,12 +200,17 @@ class BirdShowRouteProtocolCommand(BirdBGPPeerSelectCommand):
 
 
 class BirdRouterLocal(ulgmodel.LocalRouter):
-    RESCAN_BGP_COMMAND = 'show protocols'
+    RESCAN_PEERS_COMMAND = 'show protocols'
+    DEFAULT_PROTOCOL_FLTR = '^(Kernel|Device|Static|BGP).*$'
 
-    def __init__(self,sock=defaults.default_bird_sock,commands=None):
+    def __init__(self,sock=defaults.default_bird_sock,commands=None,proto_fltr=None):
         super(self.__class__,self).__init__()
         self.sock = sock
         self.setName('localhost')
+        if(proto_fltr):
+            self.proto_fltr = proto_fltr
+        else:
+            self.proto_fltr = self.DEFAULT_PROTOCOL_FLTR
 
         # command autoconfiguration might run only after other parameters are set
         if(commands):
@@ -185,10 +219,13 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
             self.setCommands(self._getDefaultCommands())
 
     def _getDefaultCommands(self):
-        return [BirdShowProtocolsCommand(),
-                BirdShowProtocolsAllCommand(self.getBGPPeers()),
-                BirdShowRouteProtocolCommand(self.getBGPPeers()),
-                BirdShowRouteExportCommand(self.getBGPPeers()),
+        sh_proto_all = BirdShowProtocolsAllCommand(self.getBGPPeers())
+        sh_proto_route = BirdShowRouteProtocolCommand(self.getBGPPeers())
+        sh_proto_export = BirdShowRouteExportCommand(self.getBGPPeers())
+        return [BirdShowProtocolsCommand(show_proto_all_command=sh_proto_all, proto_filter = self.proto_fltr),
+                sh_proto_all,
+                sh_proto_route,
+                sh_proto_export,
                 ]
 
     def runRawCommand(self,command):
@@ -304,20 +341,20 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
         return False
 
 
-    def rescanBGPPeers(self):
-        res = self.runRawCommand(self.RESCAN_BGP_COMMAND)
+    def rescanPeers(self):
+        res = self.runRawCommand(self.RESCAN_PEERS_COMMAND)
         psp = parseBirdShowProtocols(res)
 
         peers = []
         for pspl in psp[1]:
-            if(pspl[1] == "BGP"):
+            if(re.match(self.proto_fltr,pspl[1])):
                 peers.append(pspl[0])
 
         return peers
 
 
     def getBGPPeers(self):
-        return self.rescanBGPPeers()
+        return self.rescanPeers()
 
     def getBGPIPv6Peers(self):
         return self.bgp_ipv6_peers

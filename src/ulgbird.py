@@ -92,7 +92,7 @@ def parseBirdShowProtocols(text):
 
             return res
         else:
-            ulgmodel.debug("bird.parseShowProtocolsLine failed to match line: "+line)
+            ulgmodel.log("WARN: bird.parseShowProtocolsLine failed to match line: "+line)
             return None
 
 
@@ -123,9 +123,17 @@ class BirdShowProtocolsCommand(ulgmodel.TextCommand):
     def __init__(self,name=None):
         ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[],name=name)
 
-
     def _decorateTableLine(self,table_line,router,decorator_helper):
-        return [(tlg,ulgmodel.TableDecorator.GREEN) for tlg in table_line]
+        def _getTableLineColor(state):
+            if(state == 'up'):
+                return ulgmodel.TableDecorator.GREEN
+            elif(state == 'start'):
+                return ulgmodel.TableDecorator.YELLOW
+            else:
+                return ulgmodel.TableDecorator.RED
+
+        color = _getTableLineColor(table_line[3])
+        return [(tlg,color) for tlg in table_line]
 
 
     def decorateResult(self,result,router=None,decorator_helper=None):
@@ -232,7 +240,6 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
                 return False
 
         def normalizeBirdSockLine(line):
-            ulgmodel.debug("normalizeBirdSockLine: "+line)
             if(isBirdSockAsyncReply(line)):
                 return ''
 
@@ -275,7 +282,6 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
 
                 # process line according to rules take out from the C code
 
-                ulgmodel.debug("Raw received line: " + l)
                 nl = normalizeBirdSockLine(l)
                 if(nl == None):
                     # End of reply (0000 code)

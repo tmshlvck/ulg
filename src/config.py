@@ -17,7 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from ulg import *
+from ulgcisco import *
+from ulgbird import *
 
 routers = [
     CiscoRouter(host='testrouter1.core.company.com', user='xyz', password='xyz'),

@@ -27,6 +27,8 @@ import defaults
 
 import ulgmodel
 
+IPV46_SUBNET_REGEXP = '^[0-9a-fA-F:\.]+(/[0-9]{1,2}){0,1}$'
+
 
 """
 This is the input parsing code from client.c of BIRD:
@@ -72,7 +74,7 @@ server_got_reply(char *x)
 """
 
 BIRD_SOCK_HEADER_REGEXP='^([0-9]+)[-\s](.+)$'
-BIRD_SOCK_REPLY_END_REGEXP='^([0-9]+)\s*$'
+BIRD_SOCK_REPLY_END_REGEXP='^([0-9]+)\s*(\s.*)?$'
 
 BIRD_SHOW_PROTO_LINE_REGEXP='^\s*([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)(\s+([^\s].+)){0,1}\s*$'
 BIRD_SHOW_PROTO_HEADER_REGEXP='^\s*(name)\s+(proto)\s+(table)\s+(state)\s+(since)\s+(info)\s*$'
@@ -196,7 +198,14 @@ class BirdShowRouteExportCommand(BirdBGPPeerSelectCommand):
 class BirdShowRouteProtocolCommand(BirdBGPPeerSelectCommand):
     COMMAND_TEXT = 'show route protocol %s'
 
+class BirdShowRouteAllCommand(ulgmodel.TextCommand):
+    COMMAND_TEXT = 'show route all %s'
 
+    def __init__(self,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[
+                ulgmodel.TextParameter(pattern=IPV46_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET)
+                ],
+                                      name=name)
 
 
 class BirdRouterLocal(ulgmodel.LocalRouter):
@@ -226,6 +235,9 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
                 sh_proto_all,
                 sh_proto_route,
                 sh_proto_export,
+                BirdShowRouteAllCommand(),
+                ulgmodel.TextCommand('show status'),
+                ulgmodel.TextCommand('show memory')
                 ]
 
     def runRawCommand(self,command):
@@ -258,7 +270,12 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
         def isBirdSockReplyEnd(line):
             m = bird_sock_reply_end_regexp.match(line)
             if(m):
-                if(int(m.group(1)) == 0):
+                code = int(m.group(1))
+                if(code == 0):
+                    # end of reply
+                    return True
+                elif(code == 13):
+                    # show status last line
                     return True
 
             return False
@@ -277,6 +294,9 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
                 return False
 
         def normalizeBirdSockLine(line):
+            if(isBirdSockReplyCont(line)):
+                return line[1:]
+
             if(isBirdSockAsyncReply(line)):
                 return ''
 
@@ -285,9 +305,6 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
 
             if(isBirdSockTableStart(line)):
                 return getBirdSockData(line)
-
-            if(isBirdSockReplyCont(line)):
-                return line[1:]
 
             if(isBirdSockReplyEnd(line)):
                 return None
@@ -317,15 +334,16 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
             while(True):
                 l = sf.readline()
 
-                # process line according to rules take out from the C code
+                ulgmodel.debug("Raw line read: " + l)
 
-                nl = normalizeBirdSockLine(l)
-                if(nl == None):
-                    # End of reply (0000 code)
+                # process line according to rules take out from the C code
+                if(isBirdSockReplyEnd(l)):
+                    # End of reply (0000 or similar code)
                     ulgmodel.debug("End of reply.")
                     break
                 else:
-                    ulgmodel.debug("Normalized line: " + nl)
+                    nl = normalizeBirdSockLine(l)
+                    ulgmodel.debug("Read line after normalize: " + nl)
                     result=result+nl+'\n'
 
                 # close the socket and return captured result
@@ -333,7 +351,7 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
 
         except socket.timeout as e:
             # catch only timeout exception, while letting other exceptions pass
-            result = STRING_SOCKET_TIMEOUT
+            result = defaults.STRING_SOCKET_TIMEOUT
 
         return result
 

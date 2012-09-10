@@ -29,50 +29,6 @@ import ulgmodel
 
 IPV46_SUBNET_REGEXP = '^[0-9a-fA-F:\.]+(/[0-9]{1,2}){0,1}$'
 
-
-"""
-This is the input parsing code from client.c of BIRD:
-
-static void
-server_got_reply(char *x)
-{
-  int code;
-  int len = 0;
-
-  if (*x == '+')                        /* Async reply */
-    PRINTF(len, ">>> %s\n", x+1);
-  else if (x[0] == ' ')                 /* Continuation */
-    PRINTF(len, "%s%s\n", verbose ? "     " : "", x+1);
-  else if (strlen(x) > 4 &&
-           sscanf(x, "%d", &code) == 1 && code >= 0 && code < 10000 &&
-           (x[4] == ' ' || x[4] == '-'))
-    {
-      if (code)
-        PRINTF(len, "%s\n", verbose ? x : x+5);
-      if (x[4] == ' ')
-      {
-        nstate = STATE_PROMPT;
-        skip_input = 0;
-        return;
-      }
-    }
-  else
-    PRINTF(len, "??? <%s>\n", x);
-
-  if (skip_input)
-    return;
-
-  if (interactive && input_initialized && (len > 0))
-    {
-      int lns = LINES ? LINES : 25;
-      int cls = COLS ? COLS : 80;
-      num_lines += (len + cls - 1) / cls; /* Divide and round up */
-      if ((num_lines >= lns)  && (cstate == STATE_CMD_SERVER))
-        more();
-    }
-}
-"""
-
 BIRD_SOCK_HEADER_REGEXP='^([0-9]+)[-\s](.+)$'
 BIRD_SOCK_REPLY_END_REGEXP='^([0-9]+)\s*(\s.*)?$'
 
@@ -272,6 +228,9 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
             elif(code == 13):
                 # show status last line
                 return True
+            elif(code >= 9000):
+                # probably error
+                return True
             else:
                 return False
 
@@ -304,6 +263,10 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
                 if(isBirdSockReplyEnd(lp[0])):
                     # End of reply (0000 or similar code)
                     ulgmodel.debug("End of reply. Code="+str(lp[0]))
+
+                    if(lp[1]):
+                        ulgmodel.debug("Last read line after normalize: " + lp[1])
+                        result=result+lp[1]+'\n'
                     break
                 else:
                     if(lp[1]):

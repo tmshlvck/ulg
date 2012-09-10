@@ -241,79 +241,42 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
                 ]
 
     def runRawCommand(self,command):
-        def isBirdSockTableStart(line):
-            if(bird_sock_header_regexp.match(line)):
-                return True
-            else:
-                return False
+        def parseBirdSockLine(line):
+            hm = bird_sock_header_regexp.match(line)
+            if(hm):
+                # first line of the reply
+                return (int(hm.group(1)),hm.group(2))
 
-        def getBirdSockCode(line):
-            m = bird_sock_header_regexp.match(line)
-            if(m):
-                return int(m.group(1))
-            else:
-                None
+            em = bird_sock_reply_end_regexp.match(line)
+            if(em):
+                # most likely the last line of the reply
+                return (int(em.group(1)),None)
 
-        def getBirdSockData(line):
-            m = bird_sock_header_regexp.match(line)
-            if(m):
-                return m.group(2)
-            else:
-                None
-
-        def isBirdSockHeader(line):
-            if(isBirdSockTableStart(line) and getBirdSockCode(line) == 2002):
-                return True
-            else:
-                return False
-
-        def isBirdSockReplyEnd(line):
-            m = bird_sock_reply_end_regexp.match(line)
-            if(m):
-                code = int(m.group(1))
-                if(code == 0):
-                    # end of reply
-                    return True
-                elif(code == 13):
-                    # show status last line
-                    return True
-
-            return False
-
-        def isBirdSockAsyncReply(line):
             if(line[0] == '+'):
-                return True
-            else:
-                return False
+                # ignore async reply
+                return (None,None)
 
-
-        def isBirdSockReplyCont(line):
             if(line[0] == ' '):
+                # return reply line as it is (remove padding)
+                return (None,line[1:])
+
+            raise Exception("Can not parse BIRD output line: "+line)
+
+        def isBirdSockReplyEnd(code):
+            if(code==None):
+                return False
+
+            if(code == 0):
+                # end of reply
+                return True
+            elif(code == 13):
+                # show status last line
                 return True
             else:
                 return False
-
-        def normalizeBirdSockLine(line):
-            if(isBirdSockReplyCont(line)):
-                return line[1:]
-
-            if(isBirdSockAsyncReply(line)):
-                return ''
-
-            if(isBirdSockHeader(line)):
-                return getBirdSockData(line)
-
-            if(isBirdSockTableStart(line)):
-                return getBirdSockData(line)
-
-            if(isBirdSockReplyEnd(line)):
-                return None
-
-            raise Exception("Can not normalize line: "+line)
 
 
         result=''
-
         try:
             # open socket to BIRD
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -337,14 +300,17 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
                 ulgmodel.debug("Raw line read: " + l)
 
                 # process line according to rules take out from the C code
-                if(isBirdSockReplyEnd(l)):
+                lp = parseBirdSockLine(l)
+                if(isBirdSockReplyEnd(lp[0])):
                     # End of reply (0000 or similar code)
-                    ulgmodel.debug("End of reply.")
+                    ulgmodel.debug("End of reply. Code="+str(lp[0]))
                     break
                 else:
-                    nl = normalizeBirdSockLine(l)
-                    ulgmodel.debug("Read line after normalize: " + nl)
-                    result=result+nl+'\n'
+                    if(lp[1]):
+                        ulgmodel.debug("Read line after normalize: " + lp[1])
+                        result=result+lp[1]+'\n'
+                    else:
+                        ulgmodel.debug("Read line was empty after normalize.")
 
                 # close the socket and return captured result
                 s.close()

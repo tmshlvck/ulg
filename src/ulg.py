@@ -41,7 +41,7 @@ import ulgmodel
 ### CGI output handler
 
 class Session(object):
-    def __init__(self,sessionid=None,routerid=None,commandid=None,parameters=[],result=None,finished=False):
+    def __init__(self,sessionid=None,routerid=None,commandid=None,parameters=[],result=None,finished=False,error=None):
         if(sessionid == None):
             self.sessionid = self.__genSessionId__()
         else:
@@ -51,6 +51,7 @@ class Session(object):
         self.commandid=commandid
         self.parameters=parameters
         self.result=result
+        self.error=None
         self.finished=finished
 
         self.save()
@@ -134,11 +135,17 @@ class Session(object):
         self.result = result
         self.save()
 
-    def setPreResult(self,result):
-        self.setResult('<pre>'+result+'</pre>')
-
     def getResult(self):
         return self.result
+
+    def getDecoratedResult(self,decorator_helper):
+        if(self.getError()):
+            return decorator_helper.pre(self.getResult())
+        else:
+            if(self.getResult()):
+                return self.getCommand().decorateResult(self.getResult(),self.getRouter(),decorator_helper)
+            else:
+                return None
 
     def appendResult(self,result_fragment):
         self.result = self.result + result_fragment
@@ -155,6 +162,12 @@ class Session(object):
             return self.getRouter().listCommands()[self.getCommandId()]
         else:
             return None
+
+    def getError(self):
+        return self.error
+
+    def setError(self,error=None):
+        self.error=error
 
 class DecoratorHelper:
     def __init__(self):
@@ -279,6 +292,12 @@ class ULGCgi:
         session.setResult(defaults.STRING_SESSION_OVERLIMIT)
         session.setFinished()
 
+    def getRefreshInterval(self,datalength=None):
+        if(datalength):
+            return (datalength/1024)*defaults.refresh_interval + defaults.refresh_interval
+        else:
+            return defaults.refresh_interval
+
     def HTTPRedirect(self,url):
         return """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
@@ -300,10 +319,10 @@ class ULGCgi:
                 def commandThreadBody(session,decreaseUsageMethod):
                     ulgmodel.debug("Running command: "+session.getCommand().getName())
                     try:
-                        session.setResult(session.getRouter().runCommand(session.getCommand(),session.getParameters(),self.decorator_helper))
+                        session.setResult(session.getRouter().runSyncCommand(session.getCommand(),session.getParameters()))
                     except Exception as e:
                         ulgmodel.log("ERROR: Exception occured while running a command:" + traceback.format_exc())
-                        session.setPreResult("ERROR in commandThreadBody:\n"+traceback.format_exc())
+                        session.setResult("ERROR in commandThreadBody:\n"+traceback.format_exc())
                     finally:
                         ulgmodel.debug("Command finished: "+session.getCommand().getName())
                         session.setFinished()
@@ -378,7 +397,9 @@ class ULGCgi:
         if(session.isFinished()):
             refresh=None
         else:
-            refresh = defaults.refresh_interval
+            refresh = self.getRefreshInterval()
+
+        result_text = session.getDecoratedResult(self.decorator_helper)
 
         template = self.loader.load(defaults.index_template_file)
         return template.generate(defaults=defaults,
@@ -387,7 +408,7 @@ class ULGCgi:
                                  default_commandid=session.getCommandId(),
                                  default_params=session.getParameters(),
                                  default_sessionid=sessionid,
-                                 result=Markup(session.getResult()) if (session.getResult()) else None,
+                                 result=Markup(result_text) if(result_text) else None,
                                  refresh=refresh,
                                  getFormURL=self.decorator_helper.getRuncommandURL
                                  ).render('html', doctype='html')
@@ -399,7 +420,7 @@ class ULGCgi:
 
         session = Session.load(sessionid)
         if(session!=None):
-            result_text=self.sessions[sessionid].getResult()
+            result_text=self.decorator_helper.pre(self.sessions[sessionid].getError())
 
         return template.generate(defaults=defaults,
                                  routers=config.routers,
@@ -426,7 +447,7 @@ class ULGCgi:
                                  default_sessionid=None,
                                  result=Markup(result_text) if(result_text) else None,
                                  refresh=0,
-                                 getFormURL=self.decorator_helper.getRuncommandURL
+                                 getFormURL=self.decorator_helper.getRuncommandURL()
                                  ).render('html', doctype='html')
 
     def index(self, **params):

@@ -196,7 +196,7 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
                 ulgmodel.TextCommand('show memory')
                 ]
 
-    def runRawCommand(self,command):
+    def runRawCommand(self,command,outfile):
         def parseBirdSockLine(line):
             hm = bird_sock_header_regexp.match(line)
             if(hm):
@@ -234,62 +234,58 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
             else:
                 return False
 
+#        try:
+        # open socket to BIRD
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.settimeout(defaults.default_bird_sock_timeout)
+        s.connect(self.sock)
 
-        result=''
-        try:
-            # open socket to BIRD
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.settimeout(defaults.default_bird_sock_timeout)
-            s.connect(self.sock)
+        # cretate FD for the socket
+        sf=s.makefile()
 
-            # cretate FD for the socket
-            sf=s.makefile()
+        # wait for initial header
+        l = sf.readline()
 
-            # wait for initial header
+        # send the command string
+        sf.write(command+"\n")
+        sf.flush()
+
+        # read and capture lines until the output delimiter string is hit
+        while(True):
             l = sf.readline()
 
-            # send the command string
-            sf.write(command+"\n")
-            sf.flush()
+            ulgmodel.debug("Raw line read: " + l)
 
-            # read and capture lines until the output delimiter string is hit
-            while(True):
-                l = sf.readline()
+            # process line according to rules take out from the C code
+            lp = parseBirdSockLine(l)
+            if(isBirdSockReplyEnd(lp[0])):
+                # End of reply (0000 or similar code)
+                ulgmodel.debug("End of reply. Code="+str(lp[0]))
 
-                ulgmodel.debug("Raw line read: " + l)
-
-                # process line according to rules take out from the C code
-                lp = parseBirdSockLine(l)
-                if(isBirdSockReplyEnd(lp[0])):
-                    # End of reply (0000 or similar code)
-                    ulgmodel.debug("End of reply. Code="+str(lp[0]))
-
-                    if(lp[1]):
-                        ulgmodel.debug("Last read line after normalize: " + lp[1])
-                        result=result+lp[1]+'\n'
-                    break
+                if(lp[1]):
+                    ulgmodel.debug("Last read line after normalize: " + lp[1])
+                    outfile.write(lp[1]+'\n')
+                break
+            else:
+                if(lp[1]):
+                    ulgmodel.debug("Read line after normalize: " + lp[1])
+                    outfile.write(lp[1]+'\n')
                 else:
-                    if(lp[1]):
-                        ulgmodel.debug("Read line after normalize: " + lp[1])
-                        result=result+lp[1]+'\n'
-                    else:
-                        ulgmodel.debug("Read line was empty after normalize.")
+                    ulgmodel.debug("Read line was empty after normalize.")
 
-                # close the socket and return captured result
-                s.close()
+        # close the socket and return captured result
+        s.close()
 
-        except socket.timeout as e:
-            # catch only timeout exception, while letting other exceptions pass
-            result = defaults.STRING_SOCKET_TIMEOUT
-
-        return result
+#        except socket.timeout as e:
+#            # catch only timeout exception, while letting other exceptions pass
+#            outfile.result(defaults.STRING_SOCKET_TIMEOUT)
 
     def getForkNeeded(self):
         return False
 
 
     def rescanPeers(self):
-        res = self.runRawCommand(self.RESCAN_PEERS_COMMAND)
+        res = self.runRawSyncCommand(self.RESCAN_PEERS_COMMAND)
         psp = parseBirdShowProtocols(res)
 
         peers = []

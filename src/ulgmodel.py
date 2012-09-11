@@ -26,6 +26,7 @@ from genshi.template import TemplateLoader
 from genshi.core import Markup
 import pickle
 import fcntl
+import StringIO
 
 import defaults
 
@@ -295,7 +296,7 @@ class Router(object):
         r = r + ': '+error+'</em>' if error else r+'.</em>'
         return r
 
-    def runCommand(self,command,parameters,decorator_helper):
+    def runSyncCommand(self,command,parameters):
         c = command.getCommandText(parameters)
 
         if(c == None):
@@ -306,17 +307,24 @@ class Router(object):
 
         r = ''
         if(defaults.debug):
-            r = "<h3>DEBUG</h3><pre>Router.runCommand():\ncommand_name="+command.getName()+'\n'
+            r = "DEBUG: Router.runCommand():\ncommand_name="+command.getName()+'\n'
             if(parameters != None):
                 for pidx,p in enumerate(parameters):
                     r = r + " param"+str(pidx)+"="+str(p)+"\n"
-            r = r + "complete command="+c+"\n" + \
-                "</pre><hr>"
+            r = r + "complete command="+c+"\n"
 
-        r = r + command.decorateResult(self.runRawCommand(c),self,decorator_helper)
-        return r
+        return r+self.runRawSyncCommand(c)
 
-    def runRawCommand(self,command):
+    def runAsyncCommand(self,command,parameters,outfile):
+        # TODO
+        pass
+
+    def runRawSyncCommand(self,command):
+        cr = StringIO.StringIO()
+        self.runRawCommand(command,cr)
+        return cr.getvalue()
+
+    def runRawCommand(self,command,outfile):
         """ Abstract method. """
         raise Exception("runRawCommand() method not supported for the abstract class Router. Inherit from the class and implement the method.")
 

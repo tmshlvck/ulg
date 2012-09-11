@@ -514,7 +514,7 @@ class CiscoRouter(ulgmodel.RemoteRouter):
         return True
 
     def rescanBGPPeers(self,command,regexp,ipv6=True):
-        table = self.runRawCommand(command)
+        table = self.runRawSyncCommand(command)
 
         peers = []
         rlr = re.compile(regexp)
@@ -566,10 +566,7 @@ class CiscoRouter(ulgmodel.RemoteRouter):
         if(not self.getBGPIPv4Peers()) or (not self.getBGPIPv6Peers()):
             self.rescanHook()
 
-    def runRawCommand(self,command):
-        return self._runTextCommand(command)
-
-    def _runTextCommand(self,command):
+    def runRawCommand(self,command,outfile):
         # connect
         p=pexpect.spawn(defaults.bin_ssh+' -p'+str(self.getPort())+' '+str(self.getUser())+'@'+self.getHost())
 
@@ -616,4 +613,4 @@ class CiscoRouter(ulgmodel.RemoteRouter):
                 r = r + l + '\n'
             return r
 
-        return stripFirstLine(p.before)
+        outfile.write(stripFirstLine(p.before))

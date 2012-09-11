@@ -438,7 +438,10 @@ class ULGCgi:
         if(session.isFinished()):
             refresh=None
         else:
-            refresh = self.getRefreshInterval(len(result_text))
+            if(result_text):
+                refresh = self.getRefreshInterval(len(result_text))
+            else:
+                refresh = self.getRefreshInterval()
 
         template = self.loader.load(defaults.index_template_file)
         return template.generate(defaults=defaults,

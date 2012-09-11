@@ -23,7 +23,7 @@ refresh_interval = 5                             # interval of html refresh
 usage_limit = 1                                  # maximum concurrently processed requests
 
 # Settings defaults
-always_start_thread = True
+always_start_thread = True # True is highly recommended
 debug = False
 rescan_on_display = False
 persistent_storage_file = '/tmp/ulg.data'

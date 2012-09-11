@@ -350,24 +350,23 @@ class ULGCgi:
             def write(self,string):
                 self.session.appendResult(string)
 
+        # define trivial thread function
+        def commandThreadBody(session,decreaseUsageMethod):
+            ulgmodel.debug("Running command: "+session.getCommand().getName())
+            try:
+                session.getRouter().runAsyncCommand(session.getCommand(),session.getParameters(),FakeSessionFile(session))
+            except Exception as e:
+                ulgmodel.log("ERROR: Exception occured while running a command:" + traceback.format_exc())
+                session.setResult("ERROR in commandThreadBody:\n"+traceback.format_exc())
+            finally:
+                ulgmodel.debug("Command finished: "+session.getCommand().getName())
+                session.setFinished()
+                decreaseUsageMethod()
+
         # try to increase usage counter
         if(self.increaseUsage()):
             # start new thread if needed
             if(defaults.always_start_thread or session.getRouter().getForkNeeded()):
-
-                # define trivial thread function
-                def commandThreadBody(session,decreaseUsageMethod):
-                    ulgmodel.debug("Running command: "+session.getCommand().getName())
-                    try:
-                        session.getRouter().runAsyncCommand(session.getCommand(),session.getParameters(),FakeSessionFile(session))
-                    except Exception as e:
-                        ulgmodel.log("ERROR: Exception occured while running a command:" + traceback.format_exc())
-                        session.setResult("ERROR in commandThreadBody:\n"+traceback.format_exc())
-                    finally:
-                        ulgmodel.debug("Command finished: "+session.getCommand().getName())
-                        session.setFinished()
-                        decreaseUsageMethod()
-
                 # fork a daemon process (fork two times to decouple with parent)
                 sys.stdout.flush()
                 child_pid = os.fork()
@@ -384,9 +383,8 @@ class ULGCgi:
                     sys.exit(0)
 
             else:
-                # directly run the selected action
+                # directly run the selected action, DEPRECATED
                 commandThreadBody(session,self.decreaseUsage)
-
         else:
             # stop and report no-op
             self.stopSessionOverlimit(session)

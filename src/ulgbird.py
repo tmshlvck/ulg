@@ -35,8 +35,11 @@ BIRD_SOCK_REPLY_END_REGEXP='^([0-9]+)\s*(\s.*)?$'
 BIRD_SHOW_PROTO_LINE_REGEXP='^\s*([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)(\s+([^\s].+)){0,1}\s*$'
 BIRD_SHOW_PROTO_HEADER_REGEXP='^\s*(name)\s+(proto)\s+(table)\s+(state)\s+(since)\s+(info)\s*$'
 
+BIRD_RT_LINE_REGEXP = '^([^\s]+)\s+via\s+([^\s]+)\s+on\s+([^\s]+)\s+(\[[^\]]+\])\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)'
+
 bird_sock_header_regexp = re.compile(BIRD_SOCK_HEADER_REGEXP)
 bird_sock_reply_end_regexp = re.compile(BIRD_SOCK_REPLY_END_REGEXP)
+bird_rt_line_regexp = re.compile(BIRD_RT_LINE_REGEXP)
 
 
 def parseBirdShowProtocols(text):
@@ -71,7 +74,6 @@ def parseBirdShowProtocols(text):
                 ulgmodel.log("ulgbird.parseBirdShowProtocols skipping unparsable line"+l)
 
     return (header,table)
-
 
 # classes
 
@@ -153,6 +155,50 @@ class BirdShowRouteExportCommand(BirdBGPPeerSelectCommand):
 
 class BirdShowRouteProtocolCommand(BirdBGPPeerSelectCommand):
     COMMAND_TEXT = 'show route protocol %s'
+
+    def _genTable(self,table_lines,decorator_helper,router):
+        def matchBIRDBGPRTLine(line):
+            m = bird_rt_line_regexp.match(line)
+            if(m):
+                return m.groups()
+            else:
+                ulgmodel.debug("BirdShowRouteProtocolCommand: Can not parse line: "+line)
+                return None
+
+        result = []
+        for tl in table_lines:
+            ml=matchBIRDBGPRTLine(tl)
+            if(ml):
+                # generate table content
+                result.append([
+                        (decorator_helper.ahref(defaults.getIPPrefixURL(ml[0]),ml[0]),),
+                        (ml[1],),
+                        (ml[2],),
+                        (ml[3],),
+                        (ml[4],),
+                        (ml[5],),
+                        (ml[6],),
+                        ])
+        return result
+
+
+    def decorateResult(self,result,router=None,decorator_helper=None):
+        if((not router) or (not decorator_helper)):
+            return "<pre>\n%s\n</pre>" % result
+
+        table=[]
+        table_header=['Prefix',
+                      'Next-hop',
+                      'Interface',
+                      'Since',
+                      'Status',
+                      'Metric',
+                      'Info',]
+
+        table = self._genTable(str.splitlines(result),decorator_helper,router)
+
+        return ulgmodel.TableDecorator(table,table_header).decorate()
+
 
 class BirdShowRouteAllCommand(ulgmodel.TextCommand):
     COMMAND_TEXT = 'show route all %s'
@@ -264,12 +310,12 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
 
                 if(lp[1]):
                     ulgmodel.debug("Last read line after normalize: " + lp[1])
-                    outfile.write(lp[1]+'\n')
+                    outfile.write(lp[1].rstrip()+"\n")
                 break
             else:
                 if(lp[1]):
                     ulgmodel.debug("Read line after normalize: " + lp[1])
-                    outfile.write(lp[1]+'\n')
+                    outfile.write(lp[1].rstrip()+"\n")
                 else:
                     ulgmodel.debug("Read line was empty after normalize.")
 

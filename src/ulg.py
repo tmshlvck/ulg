@@ -327,7 +327,7 @@ class ULGCgi:
 
     def getRefreshInterval(self,datalength=None):
         if(datalength):
-            return (datalength/1024)*defaults.refresh_interval + defaults.refresh_interval
+            return (datalength/(1024*100))*defaults.refresh_interval + defaults.refresh_interval
         else:
             return defaults.refresh_interval
 

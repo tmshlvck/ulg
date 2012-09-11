@@ -50,8 +50,7 @@ class Session(object):
         self.routerid=routerid
         self.commandid=commandid
         self.parameters=parameters
-        self.result=result
-        self.error=None
+        self.error=error
         self.finished=finished
 
         self.save()
@@ -63,6 +62,13 @@ class Session(object):
     def getSessionFileName(sessionid):
         if(re.compile('^[a-zA-Z0-9]{10,128}$').match(sessionid)):
             return defaults.session_dir+'/'+'ulg-'+sessionid+'.session'
+        else:
+            raise Exception('Invalid session id passed. Value was: '+sessionid)
+
+    @staticmethod
+    def getSessionOutputFileName(sessionid):
+        if(re.compile('^[a-zA-Z0-9]{10,128}$').match(sessionid)):
+            return defaults.session_dir+'/'+'ulg-'+sessionid+'.out.session'
         else:
             raise Exception('Invalid session id passed. Value was: '+sessionid)
 
@@ -132,11 +138,25 @@ class Session(object):
         return self.parameters
 
     def setResult(self,result):
-        self.result = result
-        self.save()
+        fn = Session.getSessionOutputFileName(self.sessionid)
+
+        f = open(fn, 'w')
+        f.write(result)
+        f.close()
 
     def getResult(self):
-        return self.result
+        try:
+            fn = Session.getSessionOutputFileName(self.sessionid)
+
+            if(os.path.isfile(fn)):
+                f = open(fn, 'r')
+                result = f.read()
+                f.close()
+                return result
+            else:
+                return None
+        except:
+            return None
 
     def getDecoratedResult(self,decorator_helper):
         if(self.getError()):
@@ -148,8 +168,21 @@ class Session(object):
                 return None
 
     def appendResult(self,result_fragment):
-        self.result = self.result + result_fragment
-        self.save()
+        fn = Session.getSessionOutputFileName(self.sessionid)
+
+        f = open(fn, 'a')
+        f.write(result_fragment)
+        f.close()
+
+    def clearResult(self):
+        try:
+            fn = Session.getSessionOutputFileName(self.sessionid)
+
+            if(os.path.isfile(fn)):
+                f=open(fn,'w')
+                f.close()
+        except:
+            pass
 
     def getRouter(self):
         if(self.getRouterId()!=None):
@@ -310,6 +343,13 @@ class ULGCgi:
 </html>""" % url
 
     def runCommand(self,session):
+        class FakeSessionFile(object):
+            def __init__(self,session):
+                self.session = session
+
+            def write(self,string):
+                self.session.appendResult(string)
+
         # try to increase usage counter
         if(self.increaseUsage()):
             # start new thread if needed
@@ -319,7 +359,7 @@ class ULGCgi:
                 def commandThreadBody(session,decreaseUsageMethod):
                     ulgmodel.debug("Running command: "+session.getCommand().getName())
                     try:
-                        session.setResult(session.getRouter().runSyncCommand(session.getCommand(),session.getParameters()))
+                        session.getRouter().runAsyncCommand(session.getCommand(),session.getParameters(),FakeSessionFile(session))
                     except Exception as e:
                         ulgmodel.log("ERROR: Exception occured while running a command:" + traceback.format_exc())
                         session.setResult("ERROR in commandThreadBody:\n"+traceback.format_exc())
@@ -370,6 +410,7 @@ class ULGCgi:
 
         # create and register session
         session = Session(sessionid=sessionid,routerid=routerid,commandid=commandid)
+        session.clearResult()
     
         # extract parameters
         session.cleanParameters()
@@ -394,12 +435,12 @@ class ULGCgi:
         if(session == None):
             return self.HTTPRedirect(self.decorator_helper.getErrorURL())
 
+        result_text = session.getDecoratedResult(self.decorator_helper)
+
         if(session.isFinished()):
             refresh=None
         else:
-            refresh = self.getRefreshInterval()
-
-        result_text = session.getDecoratedResult(self.decorator_helper)
+            refresh = self.getRefreshInterval(len(result_text))
 
         template = self.loader.load(defaults.index_template_file)
         return template.generate(defaults=defaults,

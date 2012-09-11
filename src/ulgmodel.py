@@ -296,7 +296,7 @@ class Router(object):
         r = r + ': '+error+'</em>' if error else r+'.</em>'
         return r
 
-    def runSyncCommand(self,command,parameters):
+    def __prepareCommand(self,command,parameters):
         c = command.getCommandText(parameters)
 
         if(c == None):
@@ -304,20 +304,13 @@ class Router(object):
             return self.returnError(defaults.STRING_BAD_PARAMS)
 
         debug("Going to run command "+c+" on router "+self.getName())
+        return c
 
-        r = ''
-        if(defaults.debug):
-            r = "DEBUG: Router.runCommand():\ncommand_name="+command.getName()+'\n'
-            if(parameters != None):
-                for pidx,p in enumerate(parameters):
-                    r = r + " param"+str(pidx)+"="+str(p)+"\n"
-            r = r + "complete command="+c+"\n"
-
-        return r+self.runRawSyncCommand(c)
+    def runSyncCommand(self,command,parameters):
+        return self.runRawSyncCommand(self.__prepareCommand(command,parameters))
 
     def runAsyncCommand(self,command,parameters,outfile):
-        # TODO
-        pass
+        return self.runRawCommand(self.__prepareCommand(command,parameters),outfile)
 
     def runRawSyncCommand(self,command):
         cr = StringIO.StringIO()

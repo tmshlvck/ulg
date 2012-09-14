@@ -41,7 +41,7 @@ import ulgmodel
 ### CGI output handler
 
 class Session(object):
-    def __init__(self,sessionid=None,routerid=None,commandid=None,parameters=[],result=None,finished=False,error=None):
+    def __init__(self,sessionid=None,routerid=None,commandid=None,parameters=[],result=None,finished=False,error=None,resrange=None):
         if(sessionid == None):
             self.sessionid = self.__genSessionId__()
         else:
@@ -52,6 +52,8 @@ class Session(object):
         self.parameters=parameters
         self.error=error
         self.finished=finished
+        self.range=resrange
+        self.resultlen=0
 
         self.save()
 
@@ -158,12 +160,15 @@ class Session(object):
         except:
             return None
 
-    def getDecoratedResult(self,decorator_helper):
+    def getDecoratedResult(self,decorator_helper,resrange=0):
         if(self.getError()):
             return decorator_helper.pre(self.getResult())
         else:
-            if(self.getResult()):
-                return self.getCommand().decorateResult(self.getResult(),self.getRouter(),decorator_helper)
+            result = self.getResult()
+            if(result):
+                dr = self.getCommand().decorateResult(result,self.getRouter(),decorator_helper,resrange)
+                self.resultlines = dr[1]
+                return dr[0]
             else:
                 return None
 
@@ -181,6 +186,8 @@ class Session(object):
             if(os.path.isfile(fn)):
                 f=open(fn,'w')
                 f.close()
+
+            self.resultlines = 0
         except:
             pass
 
@@ -201,6 +208,17 @@ class Session(object):
 
     def setError(self,error=None):
         self.error=error
+        self.save()
+
+    def getRange(self):
+        return self.range
+
+    def setRange(self,resrange):
+        self.range=resrange
+        self.save()
+
+    def getMaxRange(self):
+        return self.resultlines
 
 class DecoratorHelper:
     def __init__(self):
@@ -221,8 +239,11 @@ class DecoratorHelper:
     def getRuncommandURL(self,parameters={}):
         return self.getURL('runcommand',parameters)
 
-    def getDisplayURL(self,sessionid):
-        return self.getURL('display',{'sessionid':sessionid})
+    def getDisplayURL(self,sessionid,resrange=None):
+        if(resrange):
+            return self.getURL('display',{'sessionid':sessionid,'resrange':resrange})
+        else:
+            return self.getURL('display',{'sessionid':sessionid})
 
     def getDebugURL(self,parameters={}):
         return self.getURL('debug',parameters)
@@ -425,7 +446,37 @@ class ULGCgi:
         return self.HTTPRedirect(self.decorator_helper.getDisplayURL(session.getSessionId()))
 
 
-    def renderULGResult(self,sessionid=None):
+    def renderULGResult(self,sessionid=None,resrange=0):
+        def getRangeStepURLs(session,decorator_helper):
+            cur_range = session.getRange()
+            max_range = session.getMaxRange()
+
+            if(max_range < defaults.range_step):
+                return None
+
+            res = []
+            if((cur_range - defaults.range_step * 100) >= 0):
+                res.append(('<<',decorator_helper.getDisplayURL(session.getSessionId(),str(cur_range - defaults.range_step * 100))))
+            if((cur_range - defaults.range_step * 10) >= 0):
+                res.append(('<',decorator_helper.getDisplayURL(session.getSessionId(),str(cur_range - defaults.range_step * 10))))
+
+            boundary_size = 8
+            leftb = max(0,cur_range - boundary_size*defaults.range_step)
+            rightb = min(leftb + 2*boundary_size*defaults.range_step,max_range)
+
+            for rb in range(leftb,rightb,defaults.range_step):
+                if(rb != cur_range):
+                    res.append((str(rb),decorator_helper.getDisplayURL(session.getSessionId(),str(rb))))
+                else:
+                    res.append((str(rb),None))
+
+            if((cur_range + defaults.range_step * 10) < max_range):
+                res.append(('>',decorator_helper.getDisplayURL(session.getSessionId(),str(cur_range + defaults.range_step * 10))))
+            if((cur_range + defaults.range_step * 100) < max_range):
+                res.append(('>>',decorator_helper.getDisplayURL(session.getSessionId(),str(cur_range + defaults.range_step * 100))))
+
+            return res
+
         if(sessionid==None):
             return self.HTTPRedirect(self.decorator_helper.getErrorURL())
 
@@ -433,7 +484,9 @@ class ULGCgi:
         if(session == None):
             return self.HTTPRedirect(self.decorator_helper.getErrorURL())
 
-        result_text = session.getDecoratedResult(self.decorator_helper)
+        session.setRange(int(resrange))
+
+        result_text = session.getDecoratedResult(self.decorator_helper,session.getRange())
 
         if(session.isFinished()):
             refresh=None
@@ -452,7 +505,9 @@ class ULGCgi:
                                  default_sessionid=sessionid,
                                  result=Markup(result_text) if(result_text) else None,
                                  refresh=refresh,
-                                 getFormURL=self.decorator_helper.getRuncommandURL
+                                 getFormURL=self.decorator_helper.getRuncommandURL,
+                                 resrange=str(session.getRange()),
+                                 resrangeb=getRangeStepURLs(session,self.decorator_helper),
                                  ).render('html', doctype='html')
 
     def renderULGError(self,sessionid=None,**params):
@@ -502,7 +557,7 @@ class ULGCgi:
         print self.renderULGAction(routerid,commandid,sessionid,**params)
 
     def display(self,sessionid=None,**params):
-        print self.renderULGResult(sessionid)
+        print self.renderULGResult(sessionid,**params)
 
     def error(self,sessionid=None,**params):
         print self.renderULGError(sessionid,**params)

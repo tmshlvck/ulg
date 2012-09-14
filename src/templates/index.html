@@ -111,6 +111,7 @@
     <p>Select router to perform operation on, then select a command to perform and add (optional) argument if needed.</p>
     <form action="${getFormURL()}" method="post">
       <input type="hidden" name="sessionid" value="$default_sessionid" py:if="defined('default_sessionid') and (default_sessionid)" />
+      <input type="hidden" name="resrange" value="$resrange" py:if="defined('resrange')" />
       <table summary="Form settings">
 	<tbody>
 	  <tr>
@@ -157,7 +158,7 @@
       </table>
     </form>
     <div id="result">
-      <hr py:if="(defined('result') and result) or (defined('refresh') and (refresh>0))"/>
+      <hr/>
       <py:choose>
 	<py:when test="defined('result') and result">
 	  ${result}
@@ -169,6 +170,31 @@
 	<em>Please wait for data from the router...</em><br/>
 	<em>The page is going to be refreshed in $refresh seconds.</em>
       </p>
+    </div>
+    <div id="range">
+      <py:if test="defined('resrangeb') and resrangeb">
+	<br/>
+	<p> [
+	  <py:for each="rb in resrangeb[:-1]">
+	    <py:choose>
+	      <py:when test="rb[1]">
+		<a href="${rb[1]}">${rb[0]}</a> | 
+	      </py:when>
+	      <py:otherwise>
+		${rb[0]} | 
+	      </py:otherwise>
+	    </py:choose>
+	  </py:for>
+	  <py:choose>
+	    <py:when test="resrangeb[-1][1]">
+	      <a href="${resrangeb[-1][1]}">${resrangeb[-1][0]}</a> ]
+	    </py:when>
+	    <py:otherwise>
+	      ${resrangeb[-1][0]} ]
+	    </py:otherwise>
+	  </py:choose>
+	</p>
+      </py:if>
     </div>
     <div id="footer">
       <hr/>

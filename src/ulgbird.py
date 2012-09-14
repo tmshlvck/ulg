@@ -42,7 +42,7 @@ bird_sock_reply_end_regexp = re.compile(BIRD_SOCK_REPLY_END_REGEXP)
 bird_rt_line_regexp = re.compile(BIRD_RT_LINE_REGEXP)
 
 
-def parseBirdShowProtocols(text):
+def parseBirdShowProtocols(text,resrange=None):
     def parseShowProtocolsLine(line):
         sh_proto_line_regexp = re.compile(BIRD_SHOW_PROTO_LINE_REGEXP)
         m = sh_proto_line_regexp.match(line)
@@ -59,6 +59,7 @@ def parseBirdShowProtocols(text):
 
     header = []
     table = []
+
     for l in str.splitlines(text):
         if(re.match('^\s*$',l)):
             continue
@@ -73,7 +74,10 @@ def parseBirdShowProtocols(text):
             else:
                 ulgmodel.log("ulgbird.parseBirdShowProtocols skipping unparsable line"+l)
 
-    return (header,table)
+    if(resrange):
+        return (header,table[resrange:resrange+defaults.range_step],len(table))
+    else:
+        return (header,table,len(table))
 
 # classes
 
@@ -122,21 +126,21 @@ class BirdShowProtocolsCommand(ulgmodel.TextCommand):
         return tl
 
 
-    def decorateResult(self,result,router=None,decorator_helper=None):
+    def decorateResult(self,result,router=None,decorator_helper=None,resrange=0):
         if((not router) or (not decorator_helper)):
             return "<pre>\n%s\n</pre>" % result
         else:
-            pr = parseBirdShowProtocols(result)
+            pr = parseBirdShowProtocols(result,resrange)
             table_header = pr[0]
             table = []
 
-            for tl in pr[1]:
+            for tl in pr[1][resrange:resrange+defaults.range_step]:
                 # skip when there is a filter and it does not match the protocol type
                 if(self.fltr) and (not re.match(self.fltr,tl[1])):
                     continue
                 table.append(self._decorateTableLine(tl,router,decorator_helper))
 
-            return ulgmodel.TableDecorator(table,table_header).decorate()
+            return (ulgmodel.TableDecorator(table,table_header).decorate(),pr[2])
 
 
 class BirdBGPPeerSelectCommand(ulgmodel.TextCommand):
@@ -182,7 +186,7 @@ class BirdShowRouteProtocolCommand(BirdBGPPeerSelectCommand):
         return result
 
 
-    def decorateResult(self,result,router=None,decorator_helper=None):
+    def decorateResult(self,result,router=None,decorator_helper=None,resrange=0):
         if((not router) or (not decorator_helper)):
             return "<pre>\n%s\n</pre>" % result
 
@@ -195,9 +199,12 @@ class BirdShowRouteProtocolCommand(BirdBGPPeerSelectCommand):
                       'Metric',
                       'Info',]
 
-        table = self._genTable(str.splitlines(result),decorator_helper,router)
+        lines = str.splitlines(result)
+        result_len = len(lines)
+        lines = lines[resrange:resrange+defaults.range_step]
+        table = self._genTable(lines,decorator_helper,router)
 
-        return ulgmodel.TableDecorator(table,table_header).decorate()
+        return (ulgmodel.TableDecorator(table,table_header).decorate(),result_len)
 
 
 class BirdShowRouteAllCommand(ulgmodel.TextCommand):

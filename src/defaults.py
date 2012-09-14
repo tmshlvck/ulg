@@ -21,6 +21,7 @@
 header = 'Universal looking glass test header'
 refresh_interval = 5                             # interval of html refresh
 usage_limit = 1                                  # maximum concurrently processed requests
+range_step = 100                                 # number of table lines in the decorated output per page
 
 # Settings defaults
 always_start_thread = True # True is highly recommended

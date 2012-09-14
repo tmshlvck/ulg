@@ -56,7 +56,6 @@ BGP_YELLOW_STATES = ['Idle (Admin)',]
 
 
 def matchCiscoBGPLines(header,lines):
-    # TODO
     # Match cisco lines formatted to be aligned to columns. Like:
     #    Network          Next Hop            Metric LocPrf Weight Path
     # *  79.170.248.0/21  91.210.16.6            300             0 20723 i
@@ -273,7 +272,7 @@ class CiscoCommandBgpIPv46Sum(ulgmodel.TextCommand):
         else:
             raise Exception("Can not parse line: "+line)
 
-    def decorateResult(self,result,router=None,decorator_helper=None):
+    def decorateResult(self,result,router=None,decorator_helper=None,resrange=0):
         if((not router) or (not decorator_helper)):
             return "<pre>\n%s\n</pre>" % result
 
@@ -302,7 +301,10 @@ class CiscoCommandBgpIPv46Sum(ulgmodel.TextCommand):
                     # not yet in the table body, append before-table section
                     before = before + l + '\n'
 
-        return ulgmodel.TableDecorator(table,table_header,before=decorator_helper.pre(before)).decorate()
+        result_len = len(table)
+        table = table[resrange:resrange+defaults.range_step]
+
+        return (ulgmodel.TableDecorator(table,table_header,before=decorator_helper.pre(before)).decorate(),result_len)
 
 
 class CiscoCommandBgpIPv4Sum(CiscoCommandBgpIPv46Sum):
@@ -322,12 +324,12 @@ class CiscoCommandBgpIPv6Sum(CiscoCommandBgpIPv46Sum):
     def __init__(self,name=None,peer_address_command=None,peer_received_command=None):
         return CiscoCommandBgpIPv46Sum.__init__(self,name,peer_address_command,peer_received_command)
 
-    def decorateResult(self,result,router=None,decorator_helper=None):
+    def decorateResult(self,result,router=None,decorator_helper=None,resrange=0):
         res=''
         for l in normalizeBGPIPv6SumSplitLines(str.splitlines(result)):
             res = res + "\n" + l
 
-        return super(CiscoCommandBgpIPv6Sum,self).decorateResult(res,router,decorator_helper)
+        return super(CiscoCommandBgpIPv6Sum,self).decorateResult(res,router,decorator_helper,resrange)
 
 
 class CiscoCommandShowBgpIPv4Neigh(ulgmodel.TextCommand):
@@ -396,7 +398,7 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
                     ])
         return result
 
-    def decorateResult(self,result,router=None,decorator_helper=None):
+    def decorateResult(self,result,router=None,decorator_helper=None,resrange=0):
         if((not router) or (not decorator_helper)):
             return "<pre>\n%s\n</pre>" % result
 
@@ -432,14 +434,15 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
                     # not yet in the table body, append before-table section
                     before = before + l + '\n'
 
+        result_len = len(table_lines)
         if(table_lines):
-            table = self._genTable(table_lines,decorator_helper,router)
+            table = self._genTable(table_lines[resrange:resrange+defaults.range_step],decorator_helper,router)
 
         if(after):
             after=decorator_helper.pre(after)
 
-        return ulgmodel.TableDecorator(table,table_header_descr,before=decorator_helper.pre(before),
-                                       after=after).decorate()
+        return (ulgmodel.TableDecorator(table,table_header_descr,before=decorator_helper.pre(before),
+                                       after=after).decorate(), result_len)
 
         
 class CiscoCommandShowBgpIPv4NeighAdv(CiscoCommandShowBgpIPv46Select):

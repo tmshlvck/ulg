@@ -249,8 +249,8 @@ class TextCommand(object):
     def rescanHook(self,router):
         pass
 
-    def decorateResult(self,result,router=None,decorator_helper=None):
-        return "<pre>\n%s\n</pre>" % result
+    def decorateResult(self,result,router=None,decorator_helper=None,resrange=None):
+        return ("<pre>\n%s\n</pre>" % result, len(str.splitlines(result)))
     
 class AnyCommand(TextCommand):
     def __init__(self):

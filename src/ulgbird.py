@@ -36,11 +36,12 @@ BIRD_SHOW_PROTO_LINE_REGEXP='^\s*([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^
 BIRD_SHOW_PROTO_HEADER_REGEXP='^\s*(name)\s+(proto)\s+(table)\s+(state)\s+(since)\s+(info)\s*$'
 
 BIRD_RT_LINE_REGEXP = '^([^\s]+)\s+via\s+([^\s]+)\s+on\s+([^\s]+)\s+(\[[^\]]+\])\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)'
+BIRD_ASFIELD_REGEXP = '^\s*\[AS([0-9]+)i\]\s*$'
 
 bird_sock_header_regexp = re.compile(BIRD_SOCK_HEADER_REGEXP)
 bird_sock_reply_end_regexp = re.compile(BIRD_SOCK_REPLY_END_REGEXP)
 bird_rt_line_regexp = re.compile(BIRD_RT_LINE_REGEXP)
-
+bird_asfield_regexp = re.compile(BIRD_ASFIELD_REGEXP)
 
 def parseBirdShowProtocols(text,resrange=None):
     def parseShowProtocolsLine(line):
@@ -160,6 +161,14 @@ class BirdShowRouteExportCommand(BirdBGPPeerSelectCommand):
 class BirdShowRouteProtocolCommand(BirdBGPPeerSelectCommand):
     COMMAND_TEXT = 'show route protocol %s'
 
+    def _decorateOriginAS(self,asfield,decorator_helper):
+        # expected input is "[AS28171i]"
+        m = bird_asfield_regexp.match(asfield)
+        if(m):
+            return '['+decorator_helper.ahref(defaults.getASNURL(m.group(1)),'AS'+m.group(1))+'i]'
+        else:
+            return asfield
+
     def _genTable(self,table_lines,decorator_helper,router):
         def matchBIRDBGPRTLine(line):
             m = bird_rt_line_regexp.match(line)
@@ -181,7 +190,7 @@ class BirdShowRouteProtocolCommand(BirdBGPPeerSelectCommand):
                         (ml[3],),
                         (ml[4],),
                         (ml[5],),
-                        (ml[6],),
+                        (self._decorateOriginAS(ml[6],decorator_helper),),
                         ])
         return result
 

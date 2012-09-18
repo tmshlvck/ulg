@@ -171,7 +171,7 @@ class BirdShowRouteCommand(ulgmodel.TextCommand):
         # expected input is "[AS28171i]"
         m = bird_asfield_regexp.match(asfield)
         if(m):
-            return '['+decorator_helper.ahref(defaults.getASNURL(m.group(1)),'AS'+m.group(1))+'i]'
+            return '['+decorator_helper.ahref(defaults.getASNURL(m.group(1)),'AS'+m.group(1))+m.group(2)+']'
         else:
             return asfield
 

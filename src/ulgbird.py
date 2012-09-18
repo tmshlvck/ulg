@@ -36,7 +36,7 @@ BIRD_SHOW_PROTO_LINE_REGEXP='^\s*([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^
 BIRD_SHOW_PROTO_HEADER_REGEXP='^\s*(name)\s+(proto)\s+(table)\s+(state)\s+(since)\s+(info)\s*$'
 
 BIRD_RT_LINE_REGEXP = '^([^\s]+)\s+via\s+([^\s]+)\s+on\s+([^\s]+)\s+(\[[^\]]+\])\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)'
-BIRD_ASFIELD_REGEXP = '^\s*\[AS([0-9]+)i\]\s*$'
+BIRD_ASFIELD_REGEXP = '^\s*\[AS([0-9]+)(i|\?)\]\s*$'
 
 bird_sock_header_regexp = re.compile(BIRD_SOCK_HEADER_REGEXP)
 bird_sock_reply_end_regexp = re.compile(BIRD_SOCK_REPLY_END_REGEXP)
@@ -158,8 +158,14 @@ class BirdShowProtocolsAllCommand(BirdBGPPeerSelectCommand):
 class BirdShowRouteExportCommand(BirdBGPPeerSelectCommand):
     COMMAND_TEXT = 'show route export %s'
 
-class BirdShowRouteProtocolCommand(BirdBGPPeerSelectCommand):
-    COMMAND_TEXT = 'show route protocol %s'
+class BirdShowRouteCommand(ulgmodel.TextCommand):
+    COMMAND_TEXT = 'show route for %s'
+
+    def __init__(self,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[
+                ulgmodel.TextParameter(pattern=IPV46_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET)
+                ],name=name)
+
 
     def _decorateOriginAS(self,asfield,decorator_helper):
         # expected input is "[AS28171i]"
@@ -215,9 +221,15 @@ class BirdShowRouteProtocolCommand(BirdBGPPeerSelectCommand):
 
         return (ulgmodel.TableDecorator(table,table_header).decorate(),result_len)
 
+class BirdShowRouteProtocolCommand(BirdBGPPeerSelectCommand,BirdShowRouteCommand):
+    COMMAND_TEXT = 'show route protocol %s'
+
+    def __init__(self,peers,name=None):
+        BirdShowRouteCommand.__init__(self,name)
+        BirdBGPPeerSelectCommand.__init__(self,peers,name)
 
 class BirdShowRouteAllCommand(ulgmodel.TextCommand):
-    COMMAND_TEXT = 'show route all %s'
+    COMMAND_TEXT = 'show route all for %s'
 
     def __init__(self,name=None):
         ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[
@@ -250,6 +262,7 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
         sh_proto_route = BirdShowRouteProtocolCommand(self.getBGPPeers())
         sh_proto_export = BirdShowRouteExportCommand(self.getBGPPeers())
         return [BirdShowProtocolsCommand(show_proto_all_command=sh_proto_all, proto_filter = self.proto_fltr),
+                BirdShowRouteCommand(),
                 sh_proto_all,
                 sh_proto_route,
                 sh_proto_export,

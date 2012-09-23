@@ -28,6 +28,8 @@ import defaults
 import ulgmodel
 
 IPV46_SUBNET_REGEXP = '^[0-9a-fA-F:\.]+(/[0-9]{1,2}){0,1}$'
+RTNAME_REGEXP = '^[a-zA-Z0-9]+$'
+STRING_SYMBOL_ROUTING_TABLE = 'routing table'
 
 BIRD_SOCK_HEADER_REGEXP='^([0-9]+)[-\s](.+)$'
 BIRD_SOCK_REPLY_END_REGEXP='^([0-9]+)\s*(\s.*)?$'
@@ -38,10 +40,13 @@ BIRD_SHOW_PROTO_HEADER_REGEXP='^\s*(name)\s+(proto)\s+(table)\s+(state)\s+(since
 BIRD_RT_LINE_REGEXP = '^([^\s]+)\s+via\s+([^\s]+)\s+on\s+([^\s]+)\s+(\[[^\]]+\])\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)'
 BIRD_ASFIELD_REGEXP = '^\s*\[AS([0-9]+)(i|\?)\]\s*$'
 
+BIRD_SHOW_SYMBOLS_LINE_REGEXP = '^([^\s]+)\s+([^\s].*)$'
+
 bird_sock_header_regexp = re.compile(BIRD_SOCK_HEADER_REGEXP)
 bird_sock_reply_end_regexp = re.compile(BIRD_SOCK_REPLY_END_REGEXP)
 bird_rt_line_regexp = re.compile(BIRD_RT_LINE_REGEXP)
 bird_asfield_regexp = re.compile(BIRD_ASFIELD_REGEXP)
+bird_show_symbols_line_regexp = re.compile(BIRD_SHOW_SYMBOLS_LINE_REGEXP)
 
 def parseBirdShowProtocols(text,resrange=None):
     def parseShowProtocolsLine(line):
@@ -159,11 +164,15 @@ class BirdShowRouteExportCommand(BirdBGPPeerSelectCommand):
     COMMAND_TEXT = 'show route export %s'
 
 class BirdShowRouteCommand(ulgmodel.TextCommand):
-    COMMAND_TEXT = 'show route for %s'
+    COMMAND_TEXT = 'show route table %s for %s'
 
-    def __init__(self,name=None):
+    def __init__(self,tables,name=None):
+        table_param = ulgmodel.SelectionParameter([tuple((t,t,)) for t in tables],
+                                                  name=defaults.STRING_RTABLE)
+
         ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[
-                ulgmodel.TextParameter(pattern=IPV46_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET)
+                table_param,
+                ulgmodel.TextParameter(pattern=IPV46_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET),
                 ],name=name)
 
 
@@ -221,25 +230,35 @@ class BirdShowRouteCommand(ulgmodel.TextCommand):
 
         return (ulgmodel.TableDecorator(table,table_header).decorate(),result_len)
 
-class BirdShowRouteProtocolCommand(BirdBGPPeerSelectCommand,BirdShowRouteCommand):
-    COMMAND_TEXT = 'show route protocol %s'
+class BirdShowRouteProtocolCommand(BirdShowRouteCommand):
+    COMMAND_TEXT = 'show route table %s protocol %s'
 
-    def __init__(self,peers,name=None):
-        BirdShowRouteCommand.__init__(self,name)
-        BirdBGPPeerSelectCommand.__init__(self,peers,name)
+    def __init__(self,peers,tables,name=None):
+        peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
+                                                 name=defaults.STRING_PEERID)
+        table_param = ulgmodel.SelectionParameter([tuple((t,t,)) for t in tables],
+                                                  name=defaults.STRING_RTABLE)
+
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[table_param, peer_param],name=name)
+
 
 class BirdShowRouteAllCommand(ulgmodel.TextCommand):
-    COMMAND_TEXT = 'show route all for %s'
+    COMMAND_TEXT = 'show route table %s all for %s'
 
-    def __init__(self,name=None):
+    def __init__(self,tables,name=None):
+        table_param = ulgmodel.SelectionParameter([tuple((t,t,)) for t in tables],
+                                                  name=defaults.STRING_RTABLE)
+
         ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[
-                ulgmodel.TextParameter(pattern=IPV46_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET)
+                table_param,
+                ulgmodel.TextParameter(pattern=IPV46_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET),
                 ],
                                       name=name)
 
 
 class BirdRouterLocal(ulgmodel.LocalRouter):
     RESCAN_PEERS_COMMAND = 'show protocols'
+    RESCAN_TABLES_COMMAND = 'show symbols'
     DEFAULT_PROTOCOL_FLTR = '^(Kernel|Device|Static|BGP).*$'
 
     def __init__(self,sock=defaults.default_bird_sock,commands=None,proto_fltr=None):
@@ -259,14 +278,14 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
 
     def _getDefaultCommands(self):
         sh_proto_all = BirdShowProtocolsAllCommand(self.getBGPPeers())
-        sh_proto_route = BirdShowRouteProtocolCommand(self.getBGPPeers())
+        sh_proto_route = BirdShowRouteProtocolCommand(self.getBGPPeers(),self.getRoutingTables())
         sh_proto_export = BirdShowRouteExportCommand(self.getBGPPeers())
         return [BirdShowProtocolsCommand(show_proto_all_command=sh_proto_all, proto_filter = self.proto_fltr),
-                BirdShowRouteCommand(),
+                BirdShowRouteCommand(self.getRoutingTables()),
                 sh_proto_all,
                 sh_proto_route,
                 sh_proto_export,
-                BirdShowRouteAllCommand(),
+                BirdShowRouteAllCommand(self.getRoutingTables()),
                 ulgmodel.TextCommand('show status'),
                 ulgmodel.TextCommand('show memory')
                 ]
@@ -370,10 +389,18 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
 
         return peers
 
+    def rescanRoutingTables(self):
+        res = self.runRawSyncCommand(self.RESCAN_TABLES_COMMAND)
+
+        tables = []
+        for l in str.splitlines(res):
+            m = bird_show_symbols_line_regexp.match(l)
+            if(m and m.group(2).lstrip().rstrip() == STRING_SYMBOL_ROUTING_TABLE):
+                tables.append(m.group(1))
+        return tables
 
     def getBGPPeers(self):
         return self.rescanPeers()
 
-    def getBGPIPv6Peers(self):
-        return self.bgp_ipv6_peers
-
+    def getRoutingTables(self):
+        return self.rescanRoutingTables()

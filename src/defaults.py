@@ -57,6 +57,7 @@ STRING_NONEORINTORIPADDRESS = "None or Interface or IP address"
 STRING_INTERFACE = "Interface"
 STRING_SOCKET_TIMEOUT = "Socket communication timed out. See log."
 STRING_PEERID = "Peer ID"
+STRING_RTABLE = "Routing Table"
 
 # URL generator functions
 def getASNURL(asn):

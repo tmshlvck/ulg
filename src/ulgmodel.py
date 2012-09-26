@@ -250,7 +250,14 @@ class TextCommand(object):
         pass
 
     def decorateResult(self,result,router=None,decorator_helper=None,resrange=None):
-        return ("<pre>\n%s\n</pre>" % result, len(str.splitlines(result)))
+        if(resrange != None):
+            s = str.splitlines(result)
+            r=''
+            for sl in s[resrange:resrange+defaults.range_step+1]:
+                r += sl + "\n"
+            return ("<pre>\n%s\n</pre>" % r, len(s))
+        else:
+            return ("<pre>\n%s\n</pre>" % result, len(str.splitlines(result)))
     
 class AnyCommand(TextCommand):
     def __init__(self):

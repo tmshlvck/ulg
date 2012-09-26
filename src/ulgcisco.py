@@ -45,7 +45,7 @@ BGP_PREFIX_TABLE_HEADER='^(\s)\s+(Network)\s+(Next Hop)\s+(Metric)\s+(LocPrf)\s+
 RESCAN_BGP_IPv4_COMMAND='show bgp ipv4 unicast summary'
 RESCAN_BGP_IPv6_COMMAND='show bgp ipv6 unicast summary'
 
-IPV4_SUBNET_REGEXP = '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(/[0-9]{1,2}){0,1}]$'
+IPV4_SUBNET_REGEXP = '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(/[0-9]{1,2}){0,1}$'
 IPV4_ADDRESS_REGEXP = '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'
 IPV6_SUBNET_REGEXP = '^[0-9a-fA-F:]+(/[0-9]{1,2}){0,1}$'
 IPV6_ADDRESS_REGEXP = '^[0-9a-fA-F:]+$'
@@ -483,7 +483,8 @@ class CiscoRouter(ulgmodel.RemoteRouter):
                 _show_bgp_ipv6_uni_neigh_received_routes,
                 _show_bgp_ipv4_uni_neigh_advertised,
                 _show_bgp_ipv6_uni_neigh_advertised,
-
+                ulgmodel.TextCommand('show bgp ipv4 unicast %s',[ulgmodel.TextParameter(IPV4_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET)]),
+                ulgmodel.TextCommand('show bgp ipv6 unicast %s',[ulgmodel.TextParameter(IPV6_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET)]),
                 ulgmodel.TextCommand('show ip route %s',[ulgmodel.TextParameter(IPV4_ADDRESS_REGEXP,name=defaults.STRING_IPADDRESS)]),
                 ulgmodel.TextCommand('show ipv6 unicast route %s',[ulgmodel.TextParameter(IPV6_ADDRESS_REGEXP,name=defaults.STRING_IPADDRESS)]),
                 ulgmodel.TextCommand('show ip arp %s',[ulgmodel.TextParameter('.*',name=defaults.STRING_NONEORINTORIPADDRESS)]),

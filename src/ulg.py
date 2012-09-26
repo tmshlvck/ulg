@@ -162,6 +162,7 @@ class Session(object):
 
     def getDecoratedResult(self,decorator_helper,resrange=0):
         if(self.getError()):
+            # TODO
             return decorator_helper.pre(self.getResult())
         else:
             result = self.getResult()

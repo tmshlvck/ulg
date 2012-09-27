@@ -132,19 +132,22 @@ class BirdShowProtocolsCommand(ulgmodel.TextCommand):
         return tl
 
 
-    def decorateResult(self,result,router=None,decorator_helper=None,resrange=0):
-        if((not router) or (not decorator_helper)):
-            return "<pre>\n%s\n</pre>" % result
+    def decorateResult(self,session,decorator_helper=None):
+        if(not session):
+            raise Exception("Can not decorate result without valid session.")
+
+        if((not session.getRouter()) or (not decorator_helper)):
+            return "<pre>\n%s\n</pre>" % session.getResult()
         else:
-            pr = parseBirdShowProtocols(result,resrange)
+            pr = parseBirdShowProtocols(session.getResult(),session.getRange())
             table_header = pr[0]
             table = []
 
-            for tl in pr[1][resrange:resrange+defaults.range_step]:
+            for tl in pr[1][session.getRange():session.getRange()+defaults.range_step]:
                 # skip when there is a filter and it does not match the protocol type
                 if(self.fltr) and (not re.match(self.fltr,tl[1])):
                     continue
-                table.append(self._decorateTableLine(tl,router,decorator_helper))
+                table.append(self._decorateTableLine(tl,session.getRouter(),decorator_helper))
 
             return (ulgmodel.TableDecorator(table,table_header).decorate(),pr[2])
 
@@ -210,9 +213,12 @@ class BirdShowRouteCommand(ulgmodel.TextCommand):
         return result
 
 
-    def decorateResult(self,result,router=None,decorator_helper=None,resrange=0):
-        if((not router) or (not decorator_helper)):
-            return "<pre>\n%s\n</pre>" % result
+    def decorateResult(self,session,decorator_helper=None):
+        if(not session):
+            raise Exception("Can not decorate result without valid session.")
+
+        if((not session.getRouter()) or (not decorator_helper)):
+            return "<pre>\n%s\n</pre>" % session.getResult()
 
         table=[]
         table_header=['Prefix',
@@ -223,10 +229,10 @@ class BirdShowRouteCommand(ulgmodel.TextCommand):
                       'Metric',
                       'Info',]
 
-        lines = str.splitlines(result)
+        lines = str.splitlines(session.getResult())
         result_len = len(lines)
-        lines = lines[resrange:resrange+defaults.range_step]
-        table = self._genTable(lines,decorator_helper,router)
+        lines = lines[session.getRange():session.getRange()+defaults.range_step]
+        table = self._genTable(lines,decorator_helper,session.getRouter())
 
         return (ulgmodel.TableDecorator(table,table_header).decorate(),result_len)
 

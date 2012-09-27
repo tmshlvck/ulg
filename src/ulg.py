@@ -24,14 +24,14 @@ from genshi.template import TemplateLoader
 from genshi.core import Markup
 import cgi
 import cgitb; cgitb.enable()
-import random
-import time
-import md5
 import pickle
 import re
 import fcntl
-import urllib
 import traceback
+import urllib
+import md5
+import time
+import random
 
 import config
 import defaults
@@ -41,19 +41,30 @@ import ulgmodel
 ### CGI output handler
 
 class Session(object):
-    def __init__(self,sessionid=None,routerid=None,commandid=None,parameters=[],result=None,finished=False,error=None,resrange=None):
-        if(sessionid == None):
-            self.sessionid = self.__genSessionId__()
-        else:
-            self.sessionid=sessionid
+    def __init__(self,sessionid=None,routerid=None,commandid=None,parameters=[],result=None,finished=False,error=None,resrange=None,copy=None):
+        if(copy):
+            self.sessionid=copy.sessionid
+            self.routerid=copy.routerid
+            self.commandid=copy.commandid
+            self.parameters=copy.parameters
+            self.error=copy.error
+            self.finished=copy.finished
+            self.range=copy.range
+            self.resultlen=copy.resultlen
 
-        self.routerid=routerid
-        self.commandid=commandid
-        self.parameters=parameters
-        self.error=error
-        self.finished=finished
-        self.range=resrange
-        self.resultlen=0
+        else:
+            if(sessionid == None):
+                self.sessionid = self.__genSessionId__()
+            else:
+                self.sessionid=sessionid
+
+            self.routerid=routerid
+            self.commandid=commandid
+            self.parameters=parameters
+            self.error=error
+            self.finished=finished
+            self.range=resrange
+            self.resultlen=0
 
         self.save()
 
@@ -160,14 +171,14 @@ class Session(object):
         except:
             return None
 
-    def getDecoratedResult(self,decorator_helper,resrange=0):
+    def getDecoratedResult(self,decorator_helper,resrange=0,finished=False):
         if(self.getError()):
             # TODO
             return decorator_helper.pre(self.getResult())
         else:
             result = self.getResult()
             if(result):
-                dr = self.getCommand().decorateResult(result,self.getRouter(),decorator_helper,resrange)
+                dr = self.getCommand().decorateResult(self,decorator_helper)
                 self.resultlines = dr[1]
                 return dr[0]
             else:
@@ -221,6 +232,7 @@ class Session(object):
     def getMaxRange(self):
         return self.resultlines
 
+
 class DecoratorHelper:
     def __init__(self):
         pass
@@ -271,6 +283,10 @@ class DecoratorHelper:
 
     def ahref(self,url,text):
         return ('<a href=%s>%s</a>' % (str(url),str(text)))
+
+    def copy_session(self,session):
+        return Session(copy=session)
+
 
 class ULGCgi:
     def __init__(self):
@@ -487,7 +503,7 @@ class ULGCgi:
 
         session.setRange(int(resrange))
 
-        result_text = session.getDecoratedResult(self.decorator_helper,session.getRange())
+        result_text = session.getDecoratedResult(self.decorator_helper,session.getRange(),session.isFinished())
 
         if(session.isFinished()):
             refresh=None
@@ -548,6 +564,18 @@ class ULGCgi:
                                  getFormURL=self.decorator_helper.getRuncommandURL()
                                  ).render('html', doctype='html')
 
+
+    def getULGSpecialContent(self,sessionid,**params):
+        if(sessionid==None):
+            return self.HTTPRedirect(self.decorator_helper.getErrorURL())
+
+        session = Session.load(sessionid)
+        if(session == None):
+            return self.HTTPRedirect(self.decorator_helper.getErrorURL())
+
+        return session.getCommand().getSpecialContent(session,**params)
+
+
     def index(self, **params):
         if('sessionid' in params.keys()):
             print self.renderULGIndex(sessionid=params['sessionid'])
@@ -559,6 +587,9 @@ class ULGCgi:
 
     def display(self,sessionid=None,**params):
         print self.renderULGResult(sessionid,**params)
+
+    def getfile(self,sessionid=None,**params):
+        print self.getULGSpecialContent(sessionid,**params)
 
     def error(self,sessionid=None,**params):
         print self.renderULGError(sessionid,**params)
@@ -585,6 +616,8 @@ if __name__=="__main__":
                 handler.runcommand(**params)
             elif(action == 'display'):
                 handler.display(**params)
+            elif(action == 'getfile'):
+                handler.getfile(**params)
             elif(action == 'error'):
                 handler.error(**params)
             elif(action == 'debug'):

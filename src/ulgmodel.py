@@ -44,6 +44,7 @@ def debug(message):
     log('DEBUG:' + message)
 
 
+
 class PersistentStorage(object):
     def __init__(self):
         self.data = {}
@@ -249,15 +250,18 @@ class TextCommand(object):
     def rescanHook(self,router):
         pass
 
-    def decorateResult(self,result,router=None,decorator_helper=None,resrange=None):
-        if(resrange != None):
-            s = str.splitlines(result)
+    def decorateResult(self,session,decorator_helper=None):
+        if(session.getRange() != None):
+            s = str.splitlines(session.getResult())
             r=''
-            for sl in s[resrange:resrange+defaults.range_step+1]:
+            for sl in s[session.getRange():session.getRange()+defaults.range_step+1]:
                 r += sl + "\n"
             return ("<pre>\n%s\n</pre>" % r, len(s))
         else:
-            return ("<pre>\n%s\n</pre>" % result, len(str.splitlines(result)))
+            return ("<pre>\n%s\n</pre>" % session.getResult(), len(str.splitlines(session.getResult())))
+
+    def getSpecialContent(self,session,**params):
+        raise Exception("getSpecialContet() is not implemented in ulgmodel.TextCommand.")
     
 class AnyCommand(TextCommand):
     def __init__(self):

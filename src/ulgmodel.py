@@ -262,12 +262,16 @@ class TextCommand(object):
 
     def getSpecialContent(self,session,**params):
         raise Exception("getSpecialContet() is not implemented in ulgmodel.TextCommand.")
+
+    def showRange(self):
+        return True
     
 class AnyCommand(TextCommand):
     def __init__(self):
         self.command=''
         self.parameter = TextParameter('.+', name=defaults.STRING_COMMAND)
         self.name=defaults.STRING_ANY
+        self.asn = 'My ASN'
 
     def getCommandText(self,parameters=None):
         c = ''
@@ -334,6 +338,12 @@ class Router(object):
 
     def getForkNeeded(self):
         return False
+
+    def setASN(self,asn):
+        self.asn = asn
+
+    def getASN(self):
+        return self.asn
 
 class RemoteRouter(Router):
     def getHost(self):

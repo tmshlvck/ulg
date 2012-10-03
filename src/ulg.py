@@ -229,6 +229,9 @@ class Session(object):
         self.range=resrange
         self.save()
 
+    def showRange(self):
+        return self.getCommand().showRange()
+
     def getMaxRange(self):
         return self.resultlines
 
@@ -264,6 +267,9 @@ class DecoratorHelper:
     def getErrorURL(self,parameters={}):
         return self.getURL('error',parameters)
 
+    def getSpecialContentURL(self,sessionid,parameters={}):
+        return self.getURL('getfile',dict({'sessionid':sessionid},**parameters))
+
     def getRouterID(self,router):
         for ridx,r in enumerate(config.routers):
             if(r == router):
@@ -287,6 +293,12 @@ class DecoratorHelper:
     def copy_session(self,session):
         return Session(copy=session)
 
+    def img(self,url,alternative_text=None):
+        if(alternative_text):
+            return ('<img src="%s" alt="%s">' % (url,alternative_text))
+        else:
+            return ('<img src="%s">' % url)
+
 
 class ULGCgi:
     def __init__(self):
@@ -296,6 +308,11 @@ class ULGCgi:
             )
 
         self.decorator_helper = DecoratorHelper()
+
+
+    def print_text_html(self):
+        print "Content-Type: text/html\n"
+
 
     def increaseUsage(self):
         u = 0
@@ -465,6 +482,9 @@ class ULGCgi:
 
     def renderULGResult(self,sessionid=None,resrange=0):
         def getRangeStepURLs(session,decorator_helper):
+            if(not session.showRange()):
+                return None
+
             cur_range = session.getRange()
             max_range = session.getMaxRange()
 
@@ -573,28 +593,34 @@ class ULGCgi:
         if(session == None):
             return self.HTTPRedirect(self.decorator_helper.getErrorURL())
 
-        return session.getCommand().getSpecialContent(session,**params)
+        # speciality here: the function is responsible for printing the output itself
+        session.getCommand().getSpecialContent(session,**params)
 
 
     def index(self, **params):
+        self.print_text_html()
         if('sessionid' in params.keys()):
             print self.renderULGIndex(sessionid=params['sessionid'])
         else:
             print self.renderULGIndex()
 
     def runcommand(self,routerid=0,commandid=0,sessionid=None,**params):
+        self.print_text_html()
         print self.renderULGAction(routerid,commandid,sessionid,**params)
 
     def display(self,sessionid=None,**params):
+        self.print_text_html()
         print self.renderULGResult(sessionid,**params)
 
     def getfile(self,sessionid=None,**params):
-        print self.getULGSpecialContent(sessionid,**params)
+        self.getULGSpecialContent(sessionid,**params)
 
     def error(self,sessionid=None,**params):
+        self.print_text_html()
         print self.renderULGError(sessionid,**params)
 
     def debug(self,**params):
+        self.print_text_html()
         print self.renderULGDebug(**params)
 
 # main
@@ -603,8 +629,6 @@ if __name__=="__main__":
     try:
         form = cgi.FieldStorage()
         handler = ULGCgi()
-
-        print "Content-Type: text/html\n"
 
         action = form.getvalue('action',None)
         params = dict([(k,form.getvalue(k)) for k in form.keys() if k != 'action'])

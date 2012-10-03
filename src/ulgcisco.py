@@ -28,6 +28,7 @@ import string
 import defaults
 
 import ulgmodel
+import ulggraph
 
 # module globals
 STRING_EXPECT_SSH_NEWKEY='Are you sure you want to continue connecting'
@@ -54,6 +55,111 @@ MAC_ADDRESS_REGEXP = '^[0-9a-fA-F]{4}\.[0-9a-fA-F]{4}\.[0-9a-fA-F]{4}$'
 BGP_RED_STATES = ['Idle', 'Active', '(NoNeg)']
 BGP_YELLOW_STATES = ['Idle (Admin)',]
 
+REGEX_SH_BGP_UNI_ASLINE = '^\s*([0-9\s]+)(|,.*)\s*$'
+regex_sh_bgp_uni_asline = re.compile(REGEX_SH_BGP_UNI_ASLINE)
+
+REGEX_SH_BGP_UNI_AGGR = '\s*\(aggregated by ([0-9]+) [0-9a-fA-F:\.]+\).*'
+regex_sh_bgp_uni_aggr = re.compile(REGEX_SH_BGP_UNI_AGGR)
+
+REGEX_SH_BGP_UNI_RECUSE = '\s*\(received & used\).*'
+regex_sh_bgp_uni_recuse = re.compile(REGEX_SH_BGP_UNI_RECUSE)
+
+REGEX_SH_BGP_UNI_RECONLY = '\s*\(received-only\).*'
+regex_sh_bgp_uni_reconly = re.compile(REGEX_SH_BGP_UNI_RECONLY)
+
+REGEX_SH_BGP_UNI_TABLE_START = '\s*Advertised\s+to\s+update-groups.*'
+regex_sh_bgp_uni_table_start = re.compile(REGEX_SH_BGP_UNI_TABLE_START)
+
+REGEX_SH_BGP_UNI_PEERLINE = '\s*([0-9a-fA-F:\.]+)\s.*from\s.*'
+regex_sh_bgp_uni_peerline = re.compile(REGEX_SH_BGP_UNI_PEERLINE)
+
+REGEX_SH_BGP_UNI_ORIGLINE_BEST = '\s*Origin\s.*\sbest.*'
+regex_sh_bgp_uni_origline_best = re.compile(REGEX_SH_BGP_UNI_ORIGLINE_BEST)
+
+COMMAND_NAME_GRAPH4 = 'Graph - show bgp ipv4 uni <IP subnet>'
+
+def cisco_parse_sh_bgp_uni(lines,prependas):
+	def split_ases(ases):
+		return str.split(ases)
+
+	def get_info(info):
+		res = {'recuse':False, 'reconly':False, 'aggr':None}
+
+		for g in info.split(','):
+			if(regex_sh_bgp_uni_recuse.match(g)):
+				res['recuse'] = True
+			if(regex_sh_bgp_uni_reconly.match(g)):
+				res['reconly'] = True
+
+			m = regex_sh_bgp_uni_aggr.match(g)
+			if(m):
+				res['aggr'] = m.group(1)
+
+		return res
+
+	paths = []
+	table_started = False
+	start_string = False
+	for l in str.splitlines(lines):
+		if(table_started):
+			m = regex_sh_bgp_uni_asline.match(l)
+			if(m):
+				ases = ["AS"+str(asn) for asn in [prependas] + split_ases(m.group(1))]
+				infotext = m.group(2)
+				if(infotext):
+					paths.append((ases,get_info(infotext)))
+				else:
+					paths.append((ases,{'recuse':False, 'reconly':False, 'aggr':None}))
+				continue
+
+			m = regex_sh_bgp_uni_peerline.match(l)
+			if(m):
+				paths[-1][1]['peer'] = m.group(1)
+				continue
+
+			m = regex_sh_bgp_uni_origline_best.match(l)
+			if(m):
+				paths[-1][1]['recuse'] = True
+		else:
+			if(start_string):
+				table_started = True
+			else:
+				if(regex_sh_bgp_uni_table_start.match(l)):
+					start_string = True
+
+	return paths
+
+
+def reduce_bgp_paths(paths):
+	def has_valid(paths,onepath):
+		for p in paths:
+			if((onepath[0] == p[0]) and (not p[1]['reconly'])):
+				return True
+		return False
+
+	def has_used(paths,onepath):
+		for p in paths:
+			if((onepath[0] == p[0]) and (p[1]['recuse'])):
+				return True
+		return False
+
+	def assign_value(path):
+		if(path[1]['recuse']):
+			return 1
+		elif(path[1]['reconly']):
+			return 100
+		else:
+			return 10
+
+	newpaths = []
+	for p in paths:
+		if((p[1]['reconly']) and has_valid(paths,p)):
+			pass
+		elif(not (p[1]['recuse']) and has_used(paths,p)):
+			pass
+		else:
+			newpaths.append(p)
+	return sorted(newpaths,key=assign_value)
 
 def matchCiscoBGPLines(header,lines):
     # Match cisco lines formatted to be aligned to columns. Like:
@@ -472,16 +578,21 @@ class CiscoCommandGraphShowBgpIPv46Uni(ulgmodel.TextCommand):
 
     def __init__(self,peers,name=None):
         ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[
-                ulgmodel.TextParameter(ulgmodel.TextParameter(IPV4_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET))],
+                ulgmodel.TextParameter(IPV4_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET)],
                 name=name)
 
     def decorateResult(self,session,decorator_helper=None):
-        # TODO return img src=... to result when finished
-        # decorator_helper.getSpecialContentURL(session!!!)
-        pass
+        return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),"BGP graph"),1)
 
     def getSpecialContent(self,session,**params):
-        return ''
+        print "Content-type: image/png\n"
+	paths = cisco_parse_sh_bgp_uni(session.getResult(),str(session.getRouter().getASN()))
+        ulggraph.bgp_graph_gen(reduce_bgp_paths(paths),start=session.getRouter().getName(),
+			       end=session.getParameters()[0])
+
+    def showRange(self):
+        return False
+
 
 class CiscoCommandGraphShowBgpIPv4Uni(CiscoCommandGraphShowBgpIPv46Uni):
     COMMAND_TEXT='show bgp ipv4 unicast %s'
@@ -497,6 +608,7 @@ class CiscoRouter(ulgmodel.RemoteRouter):
         _show_bgp_ipv6_uni_neigh = CiscoCommandShowBgpIPv6Neigh(self.getBGPIPv6Peers())
         _show_bgp_ipv6_uni_neigh_advertised = CiscoCommandShowBgpIPv6NeighAdv(self.getBGPIPv6Peers())
         _show_bgp_ipv6_uni_neigh_received_routes = CiscoCommandShowBgpIPv6NeighRecv(self.getBGPIPv6Peers())
+        _graph_show_bgp_ipv4_uni = CiscoCommandGraphShowBgpIPv4Uni(self.getBGPIPv4Peers(),COMMAND_NAME_GRAPH4)
 
         return [ulgmodel.TextCommand('show version'),
                 ulgmodel.TextCommand('show interfaces status'),
@@ -520,9 +632,10 @@ class CiscoRouter(ulgmodel.RemoteRouter):
                 ulgmodel.TextCommand('show ipv6 neighbors %s',[ulgmodel.TextParameter('.*',name=defaults.STRING_NONEORINTORIPADDRESS)]),
                 ulgmodel.TextCommand('show mac-address-table address %s',[ulgmodel.TextParameter(MAC_ADDRESS_REGEXP,name=defaults.STRING_MACADDRESS)]),
                 ulgmodel.TextCommand('show mac-address-table interface %s',[ulgmodel.TextParameter('.*',name=defaults.STRING_INTERFACE)]),
+                _graph_show_bgp_ipv4_uni,
                 ]
 
-    def __init__(self, host, user, password, port=22, commands=None, enable_bgp=True):
+    def __init__(self, host, user, password, port=22, commands=None, enable_bgp=True, asn='My ASN'):
         self.setHost(host)
         self.setPort(port)
         self.setUser(user)
@@ -530,6 +643,7 @@ class CiscoRouter(ulgmodel.RemoteRouter):
         self.bgp_ipv4_peers = []
         self.bgp_ipv6_peers = []
         self.setName(host)
+	self.setASN(asn)
 
         if enable_bgp:
             if(defaults.rescan_on_display):

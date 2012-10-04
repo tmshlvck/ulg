@@ -183,7 +183,7 @@ class BirdShowRouteCommand(ulgmodel.TextCommand):
         # expected input is "[AS28171i]"
         m = bird_asfield_regexp.match(asfield)
         if(m):
-            return '['+decorator_helper.ahref(defaults.getASNURL(m.group(1)),'AS'+m.group(1))+m.group(2)+']'
+            return '['+decorator_helper.mwin(defaults.getASNURL(m.group(1)),'AS'+m.group(1))+m.group(2)+']'
         else:
             return asfield
 
@@ -202,7 +202,7 @@ class BirdShowRouteCommand(ulgmodel.TextCommand):
             if(ml):
                 # generate table content
                 result.append([
-                        (decorator_helper.ahref(defaults.getIPPrefixURL(ml[0]),ml[0]),),
+                        (decorator_helper.mwin(defaults.getIPPrefixURL(ml[0]),ml[0]),),
                         (ml[1],),
                         (ml[2],),
                         (ml[3],),

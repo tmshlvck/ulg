@@ -77,6 +77,7 @@ REGEX_SH_BGP_UNI_ORIGLINE_BEST = '\s*Origin\s.*\sbest.*'
 regex_sh_bgp_uni_origline_best = re.compile(REGEX_SH_BGP_UNI_ORIGLINE_BEST)
 
 COMMAND_NAME_GRAPH4 = 'Graph - show bgp ipv4 uni <IP subnet>'
+COMMAND_NAME_GRAPH6 = 'Graph - show bgp ipv6 uni <IP subnet>'
 
 def cisco_parse_sh_bgp_uni(lines,prependas):
 	def split_ases(ases):
@@ -574,11 +575,11 @@ class CiscoCommandShowBgpIPv6NeighRecv(CiscoCommandShowBgpIPv46Select):
 
 class CiscoCommandGraphShowBgpIPv46Uni(ulgmodel.TextCommand):
     TABLE_HEADER_REGEXP=BGP_PREFIX_TABLE_HEADER
-    LASTLINE_REGEXP='^\s*Total number of prefixes [0-9]+\s*$'
+    PARAM_REGEXP = '.*'
 
     def __init__(self,peers,name=None):
         ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[
-                ulgmodel.TextParameter(IPV4_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET)],
+                ulgmodel.TextParameter(self.PARAM_REGEXP,name=defaults.STRING_IPSUBNET)],
                 name=name)
 
     def decorateResult(self,session,decorator_helper=None):
@@ -596,6 +597,12 @@ class CiscoCommandGraphShowBgpIPv46Uni(ulgmodel.TextCommand):
 
 class CiscoCommandGraphShowBgpIPv4Uni(CiscoCommandGraphShowBgpIPv46Uni):
     COMMAND_TEXT='show bgp ipv4 unicast %s'
+    PARAM_REGEXP = IPV4_SUBNET_REGEXP
+
+class CiscoCommandGraphShowBgpIPv6Uni(CiscoCommandGraphShowBgpIPv46Uni):
+    COMMAND_TEXT='show bgp ipv6 unicast %s'
+    PARAM_REGEXP = IPV6_SUBNET_REGEXP
+
 
 class CiscoRouter(ulgmodel.RemoteRouter):
     PS_KEY_BGPV4 = '-bgpipv4'
@@ -609,6 +616,7 @@ class CiscoRouter(ulgmodel.RemoteRouter):
         _show_bgp_ipv6_uni_neigh_advertised = CiscoCommandShowBgpIPv6NeighAdv(self.getBGPIPv6Peers())
         _show_bgp_ipv6_uni_neigh_received_routes = CiscoCommandShowBgpIPv6NeighRecv(self.getBGPIPv6Peers())
         _graph_show_bgp_ipv4_uni = CiscoCommandGraphShowBgpIPv4Uni(self.getBGPIPv4Peers(),COMMAND_NAME_GRAPH4)
+	_graph_show_bgp_ipv6_uni = CiscoCommandGraphShowBgpIPv6Uni(self.getBGPIPv6Peers(),COMMAND_NAME_GRAPH6)
 
         return [ulgmodel.TextCommand('show version'),
                 ulgmodel.TextCommand('show interfaces status'),
@@ -633,6 +641,7 @@ class CiscoRouter(ulgmodel.RemoteRouter):
                 ulgmodel.TextCommand('show mac-address-table address %s',[ulgmodel.TextParameter(MAC_ADDRESS_REGEXP,name=defaults.STRING_MACADDRESS)]),
                 ulgmodel.TextCommand('show mac-address-table interface %s',[ulgmodel.TextParameter('.*',name=defaults.STRING_INTERFACE)]),
                 _graph_show_bgp_ipv4_uni,
+		_graph_show_bgp_ipv6_uni,
                 ]
 
     def __init__(self, host, user, password, port=22, commands=None, enable_bgp=True, asn='My ASN'):

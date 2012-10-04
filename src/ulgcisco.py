@@ -366,7 +366,7 @@ class CiscoCommandBgpIPv46Sum(ulgmodel.TextCommand):
             return [
                 (self._getPeerTableCell(decorator_helper,router,lrm.group(1)),color),
                 (lrm.group(2),color),
-                (decorator_helper.ahref(defaults.getASNURL(lrm.group(3)),lrm.group(3)),color),
+                (decorator_helper.mwin(defaults.getASNURL(lrm.group(3)),lrm.group(3)),color),
                 (lrm.group(4),color),
                 (lrm.group(5),color),
                 (lrm.group(6),color),
@@ -473,7 +473,7 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
         for asnm in re.compile('[^\s]+').finditer(path):
             asn = asnm.group(0)
             if(asn.isdigit()):
-                result = result + ' ' + decorator_helper.ahref(defaults.getASNURL(asn),asn)
+                result = result + ' ' + decorator_helper.mwin(defaults.getASNURL(asn),asn)
             else:
                 if(re.match('^\s*{[0-9,]+}\s*', asn)):
                     result = result + '{'
@@ -482,10 +482,10 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
                         sasn = sasnm.group(0)
                         if(sasn.isdigit()):
                             if(isnext):
-                                result = result + ',' + decorator_helper.ahref(defaults.getASNURL(sasn),sasn)
+                                result = result + ',' + decorator_helper.mwin(defaults.getASNURL(sasn),sasn)
                             else:
                                 isnext = True
-                                result = result + decorator_helper.ahref(defaults.getASNURL(sasn),sasn)
+                                result = result + decorator_helper.mwin(defaults.getASNURL(sasn),sasn)
                     result = result + '}'
                 else:
                     result = result + ' ' +asn
@@ -500,7 +500,7 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
             # generate table content
             result.append([
                     (ml[0],),
-                    (decorator_helper.ahref(defaults.getIPPrefixURL(ml[1]),ml[1]),),
+                    (decorator_helper.mwin(defaults.getIPPrefixURL(ml[1]),ml[1]),),
                     (ml[2],),
                     (ml[3],),
                     (ml[4],),

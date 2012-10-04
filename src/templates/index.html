@@ -3,10 +3,11 @@
       xmlns:py="http://genshi.edgewall.org/">
   <head>
     <title>Universal Looking Glass</title>
+    <link rel="stylesheet" href="ulg.css" />
     <py:if test="defined('refresh')">
       <meta http-equiv="refresh" content="$refresh" py:if="defined('refresh') and (refresh>0)" />
     </py:if>
-
+    <script type="text/javascript" src="tinybox.js"></script>
     <script type="text/javascript">
       function updateFormParams()
       {

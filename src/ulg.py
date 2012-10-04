@@ -299,6 +299,11 @@ class DecoratorHelper:
         else:
             return ('<img src="%s">' % url)
 
+    def mwin(self,url,label=None):
+        if(label == None):
+            label = url
+        return """<span style="cursor: pointer" onclick="TINY.box.show({iframe:'%s',boxid:'frameless',fixed:false,width:750,height:450,closejs:function(){closeJS()}})"><u>%s</u></span>""" % (url,label)
+
 
 class ULGCgi:
     def __init__(self):

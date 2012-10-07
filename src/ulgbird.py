@@ -26,6 +26,7 @@ import re
 import defaults
 
 import ulgmodel
+import ulggraph
 
 IPV46_SUBNET_REGEXP = '^[0-9a-fA-F:\.]+(/[0-9]{1,2}){0,1}$'
 RTNAME_REGEXP = '^[a-zA-Z0-9]+$'
@@ -40,13 +41,59 @@ BIRD_SHOW_PROTO_HEADER_REGEXP='^\s*(name)\s+(proto)\s+(table)\s+(state)\s+(since
 BIRD_RT_LINE_REGEXP = '^([^\s]+)\s+via\s+([^\s]+)\s+on\s+([^\s]+)\s+(\[[^\]]+\])\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)'
 BIRD_ASFIELD_REGEXP = '^\s*\[AS([0-9]+)(i|\?)\]\s*$'
 
-BIRD_SHOW_SYMBOLS_LINE_REGEXP = '^([^\s]+)\s+([^\s].*)$'
+BIRD_SHOW_SYMBOLS_LINE_REGEXP = '^([^\s]+)\s+(.+)\s*'
+
+BIRD_GRAPH_SH_ROUTE_ALL = "Graph show route table <RT> for <IP subnet>"
 
 bird_sock_header_regexp = re.compile(BIRD_SOCK_HEADER_REGEXP)
 bird_sock_reply_end_regexp = re.compile(BIRD_SOCK_REPLY_END_REGEXP)
 bird_rt_line_regexp = re.compile(BIRD_RT_LINE_REGEXP)
 bird_asfield_regexp = re.compile(BIRD_ASFIELD_REGEXP)
 bird_show_symbols_line_regexp = re.compile(BIRD_SHOW_SYMBOLS_LINE_REGEXP)
+
+BIRD_SH_ROUTE_ALL_ASES_REGEXP = "^\s*BGP\.as_path:\s+([0-9\s]+)\s*$"
+bird_sh_route_all_ases_regexp = re.compile(BIRD_SH_ROUTE_ALL_ASES_REGEXP)
+
+BIRD_SH_ROUTE_ALL_NEXTHOP_REGEXP = ".*\s+via\s+([0-9a-fA-F:\.]+)\s+on\s+[^\s]+\s+\[([^\s]+)\s+.*"
+bird_sh_route_all_nexthop_regexp = re.compile(BIRD_SH_ROUTE_ALL_NEXTHOP_REGEXP)
+
+BIRD_SH_ROUTE_ALL_USED_REGEXP = ".*\]\s+\*\s+\(.*"
+bird_sh_route_all_used_regexp = re.compile(BIRD_SH_ROUTE_ALL_USED_REGEXP)
+
+def bird_parse_sh_route_all(text,prependas):
+    def split_ases(ases):
+		return str.split(ases)
+
+    DEFAULT_PARAMS = {'recuse':False, 'reconly':False, 'aggr':None}
+
+    res = []
+    params = DEFAULT_PARAMS
+    for l in str.splitlines(text):
+        m = bird_sh_route_all_nexthop_regexp.match(l)
+        if(m):
+            params['peer'] = m.group(2)
+            if(bird_sh_route_all_used_regexp.match(l)):
+                params['recuse'] = True
+
+        m = bird_sh_route_all_ases_regexp.match(l)
+        if(m):
+            ases = ["AS"+str(asn) for asn in [prependas] + split_ases(m.group(1))]
+            res.append((ases,params))
+            params = DEFAULT_PARAMS
+            continue
+
+    return res
+
+def bird_reduce_paths(paths):
+    def assign_value(path):
+        if(path[1]['recuse']):
+            return 1
+        elif(path[1]['reconly']):
+            return 100
+        else:
+            return 10
+
+    return sorted(paths,key=assign_value)
 
 def parseBirdShowProtocols(text,resrange=None):
     def parseShowProtocolsLine(line):
@@ -261,16 +308,43 @@ class BirdShowRouteAllCommand(ulgmodel.TextCommand):
                 ],
                                       name=name)
 
+class BirdGraphShowRouteAll(ulgmodel.TextCommand):
+    COMMAND_TEXT = 'show route table %s all for %s'
+
+    def __init__(self,tables,name=BIRD_GRAPH_SH_ROUTE_ALL):
+        table_param = ulgmodel.SelectionParameter([tuple((t,t,)) for t in tables],
+                                                  name=defaults.STRING_RTABLE)
+
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[
+                table_param,
+                ulgmodel.TextParameter(pattern=IPV46_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET),
+                ],
+                                      name=name)
+
+    def decorateResult(self,session,decorator_helper=None):
+        return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),"BGP graph"),1)
+
+    def getSpecialContent(self,session,**params):
+        pass
+        print "Content-type: image/png\n"
+	paths = bird_parse_sh_route_all(session.getResult(),str(session.getRouter().getASN()))
+        ulggraph.bgp_graph_gen(bird_reduce_paths(paths),start=session.getRouter().getName(),
+			       end=session.getParameters()[1])
+
+    def showRange(self):
+        return False
+
 
 class BirdRouterLocal(ulgmodel.LocalRouter):
     RESCAN_PEERS_COMMAND = 'show protocols'
     RESCAN_TABLES_COMMAND = 'show symbols'
     DEFAULT_PROTOCOL_FLTR = '^(Kernel|Device|Static|BGP).*$'
 
-    def __init__(self,sock=defaults.default_bird_sock,commands=None,proto_fltr=None):
+    def __init__(self,sock=defaults.default_bird_sock,commands=None,proto_fltr=None,asn='My ASN'):
         super(self.__class__,self).__init__()
         self.sock = sock
         self.setName('localhost')
+        self.setASN(asn)
         if(proto_fltr):
             self.proto_fltr = proto_fltr
         else:
@@ -292,6 +366,7 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
                 sh_proto_route,
                 sh_proto_export,
                 BirdShowRouteAllCommand(self.getRoutingTables()),
+                BirdGraphShowRouteAll(self.getRoutingTables()),
                 ulgmodel.TextCommand('show status'),
                 ulgmodel.TextCommand('show memory')
                 ]
@@ -401,8 +476,11 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
         tables = []
         for l in str.splitlines(res):
             m = bird_show_symbols_line_regexp.match(l)
+            ulgmodel.debug("DEBUG TABLES match: "+m.group(2))
             if(m and m.group(2).lstrip().rstrip() == STRING_SYMBOL_ROUTING_TABLE):
                 tables.append(m.group(1))
+
+        ulgmodel.debug("DEBUG TABLES: "+str(tables))
         return tables
 
     def getBGPPeers(self):

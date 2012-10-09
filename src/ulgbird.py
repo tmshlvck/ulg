@@ -38,7 +38,7 @@ BIRD_SOCK_REPLY_END_REGEXP='^([0-9]+)\s*(\s.*)?$'
 BIRD_SHOW_PROTO_LINE_REGEXP='^\s*([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)(\s+([^\s].+)){0,1}\s*$'
 BIRD_SHOW_PROTO_HEADER_REGEXP='^\s*(name)\s+(proto)\s+(table)\s+(state)\s+(since)\s+(info)\s*$'
 
-BIRD_RT_LINE_REGEXP = '^([^\s]+)\s+via\s+([^\s]+)\s+on\s+([^\s]+)\s+(\[[^\]]+\])\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)'
+BIRD_RT_LINE_REGEXP = '^([^\s]+)\s+via\s+([^\s]+)\s+on\s+([^\s]+)\s+(\[[^\]]+\])\s+(\*?)\s*([^\s]+)\s+([^\s]+)'
 BIRD_ASFIELD_REGEXP = '^\s*\[AS([0-9]+)(i|\?)\]\s*$'
 
 BIRD_SHOW_SYMBOLS_LINE_REGEXP = '^([^\s]+)\s+(.+)\s*'
@@ -67,7 +67,7 @@ def bird_parse_sh_route_all(text,prependas):
     DEFAULT_PARAMS = {'recuse':False, 'reconly':False, 'aggr':None}
 
     res = []
-    params = DEFAULT_PARAMS
+    params = dict(DEFAULT_PARAMS)
     for l in str.splitlines(text):
         m = bird_sh_route_all_nexthop_regexp.match(l)
         if(m):
@@ -79,7 +79,7 @@ def bird_parse_sh_route_all(text,prependas):
         if(m):
             ases = ["AS"+str(asn) for asn in [prependas] + split_ases(m.group(1))]
             res.append((ases,params))
-            params = DEFAULT_PARAMS
+            params = dict(DEFAULT_PARAMS)
             continue
 
     return res
@@ -230,7 +230,7 @@ class BirdShowRouteCommand(ulgmodel.TextCommand):
         # expected input is "[AS28171i]"
         m = bird_asfield_regexp.match(asfield)
         if(m):
-            return '['+decorator_helper.mwin(defaults.getASNURL(m.group(1)),'AS'+m.group(1))+m.group(2)+']'
+            return '['+decorator_helper.decorateASN(m.group(1))+m.group(2)+']'
         else:
             return asfield
 
@@ -249,7 +249,7 @@ class BirdShowRouteCommand(ulgmodel.TextCommand):
             if(ml):
                 # generate table content
                 result.append([
-                        (decorator_helper.mwin(defaults.getIPPrefixURL(ml[0]),ml[0]),),
+                        (decorator_helper.decorateIP(ml[0]),),
                         (ml[1],),
                         (ml[2],),
                         (ml[3],),
@@ -476,11 +476,9 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
         tables = []
         for l in str.splitlines(res):
             m = bird_show_symbols_line_regexp.match(l)
-            ulgmodel.debug("DEBUG TABLES match: "+m.group(2))
             if(m and m.group(2).lstrip().rstrip() == STRING_SYMBOL_ROUTING_TABLE):
                 tables.append(m.group(1))
 
-        ulgmodel.debug("DEBUG TABLES: "+str(tables))
         return tables
 
     def getBGPPeers(self):

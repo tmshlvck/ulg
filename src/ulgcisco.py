@@ -273,6 +273,7 @@ def matchCiscoBGPLines(header,lines):
 
             result[-1].append(normalize(l[lgp[0]:lgp[1]]))
 
+    ulgmodel.debug("DEBUG bgpmatchlines:"+str(result))
     return result
 
 def normalizeBGPIPv6SumSplitLines(lines):
@@ -367,7 +368,7 @@ class CiscoCommandBgpIPv46Sum(ulgmodel.TextCommand):
             return [
                 (self._getPeerTableCell(decorator_helper,router,lrm.group(1)),color),
                 (lrm.group(2),color),
-                (decorator_helper.mwin(defaults.getASNURL(lrm.group(3)),lrm.group(3)),color),
+                (decorator_helper.decorateASN(lrm.group(3)),color),
                 (lrm.group(4),color),
                 (lrm.group(5),color),
                 (lrm.group(6),color),
@@ -474,7 +475,7 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
         for asnm in re.compile('[^\s]+').finditer(path):
             asn = asnm.group(0)
             if(asn.isdigit()):
-                result = result + ' ' + decorator_helper.mwin(defaults.getASNURL(asn),asn)
+                result = result + ' ' + decorator_helper.decorateASN(asn)
             else:
                 if(re.match('^\s*{[0-9,]+}\s*', asn)):
                     result = result + '{'
@@ -483,10 +484,10 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
                         sasn = sasnm.group(0)
                         if(sasn.isdigit()):
                             if(isnext):
-                                result = result + ',' + decorator_helper.mwin(defaults.getASNURL(sasn),sasn)
+                                result = result + ',' + decorator_helper.decorateASN(sasn)
                             else:
                                 isnext = True
-                                result = result + decorator_helper.mwin(defaults.getASNURL(sasn),sasn)
+                                result = result + decorator_helper.decorateASN(sasn)
                     result = result + '}'
                 else:
                     result = result + ' ' +asn
@@ -498,19 +499,33 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
 
         result = []
         for ml in mls:
-            # generate table content
-            result.append([
-                    (ml[0],),
-                    (decorator_helper.mwin(defaults.getIPPrefixURL(ml[1]),ml[1]),),
-                    (ml[2],),
-                    (ml[3],),
-                    (ml[4],),
-                    (ml[5],),
-                    (self._decorateASPath(ml[6],decorator_helper),),
-                    ])
-        return result
+		# generate table content
+		result.append([
+				(ml[0],),
+				(decorator_helper.decorateIP(ml[1]),),
+				(ml[2],),
+				(ml[3],),
+				(ml[4],),
+				(ml[5],),
+				(self._decorateASPath(ml[6],decorator_helper),),
+				])
+	return result
 
     def decorateResult(self,session,decorator_helper=None):
+	def restrict(lines,start,count):
+            res=[]
+            s=start
+	    r = re.compile("^\s{6,}.*")
+	    
+            while(r.match(lines[s]) and s > 0):
+                s=s-1
+
+	    e=s+count
+	    while(r.match(lines[e]) and e < (len(lines)-1)):
+                e=e+1
+
+	    return lines[s:e]
+
         if(not session):
             raise Exception("Can not decorate result without valid session passed.")
 
@@ -551,7 +566,7 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
 
         result_len = len(table_lines)
         if(table_lines):
-            table = self._genTable(table_lines[session.getRange():session.getRange()+defaults.range_step],
+            table = self._genTable(restrict(table_lines,session.getRange(),defaults.range_step),
                                    decorator_helper,session.getRouter())
 
         if(after):

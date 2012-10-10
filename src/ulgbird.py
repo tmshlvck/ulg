@@ -51,7 +51,7 @@ bird_rt_line_regexp = re.compile(BIRD_RT_LINE_REGEXP)
 bird_asfield_regexp = re.compile(BIRD_ASFIELD_REGEXP)
 bird_show_symbols_line_regexp = re.compile(BIRD_SHOW_SYMBOLS_LINE_REGEXP)
 
-BIRD_SH_ROUTE_ALL_ASES_REGEXP = "^\s*BGP\.as_path:\s+([0-9\s]+)\s*$"
+BIRD_SH_ROUTE_ALL_ASES_REGEXP = "^(\s*BGP\.as_path:\s+)([0-9\s]+)\s*$"
 bird_sh_route_all_ases_regexp = re.compile(BIRD_SH_ROUTE_ALL_ASES_REGEXP)
 
 BIRD_SH_ROUTE_ALL_NEXTHOP_REGEXP = ".*\s+via\s+([0-9a-fA-F:\.]+)\s+on\s+[^\s]+\s+\[([^\s]+)\s+.*"
@@ -77,7 +77,7 @@ def bird_parse_sh_route_all(text,prependas):
 
         m = bird_sh_route_all_ases_regexp.match(l)
         if(m):
-            ases = ["AS"+str(asn) for asn in [prependas] + split_ases(m.group(1))]
+            ases = ["AS"+str(asn) for asn in [prependas] + split_ases(m.group(2))]
             res.append((ases,params))
             params = dict(DEFAULT_PARAMS)
             continue
@@ -307,6 +307,28 @@ class BirdShowRouteAllCommand(ulgmodel.TextCommand):
                 ulgmodel.TextParameter(pattern=IPV46_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET),
                 ],
                                       name=name)
+
+    def decorateResult(self,session,decorator_helper=None):
+        def decorateLine(l):			
+            m = bird_sh_route_all_ases_regexp.match(l)
+            if(m):
+                r = m.group(1)
+                ases = str.split(m.group(2))
+                for asn in ases:
+                    r = r + decorator_helper.decorateASN(asn,prefix='')
+                    r = r + ' '
+                return r
+            else:
+                return l
+
+
+        s = str.splitlines(session.getResult())
+        r=''
+        for sl in s:
+            r += decorateLine(sl) + "\n"
+            
+        return ("<pre>\n%s\n</pre>" % r, len(s))
+
 
 class BirdGraphShowRouteAll(ulgmodel.TextCommand):
     COMMAND_TEXT = 'show route table %s all for %s'

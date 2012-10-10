@@ -521,6 +521,8 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
                 s=s-1
 
 	    e=s+count
+	    if(e >= len(lines)):
+		    e=len(lines)-1
 	    while(r.match(lines[e]) and e < (len(lines)-1)):
                 e=e+1
 

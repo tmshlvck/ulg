@@ -251,7 +251,7 @@ class TextCommand(object):
         pass
 
     def decorateResult(self,session,decorator_helper=None):
-        if(session.getRange() != None):
+        if(session.getRange() != None and ):
             s = str.splitlines(session.getResult())
             r=''
             for sl in s[session.getRange():session.getRange()+defaults.range_step+1]:

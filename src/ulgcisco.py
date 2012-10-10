@@ -618,6 +618,19 @@ class CiscoCommandGraphShowBgpIPv6Uni(CiscoCommandGraphShowBgpIPv46Uni):
     COMMAND_TEXT='show bgp ipv6 unicast %s'
     PARAM_REGEXP = IPV6_SUBNET_REGEXP
 
+class CiscoShowBgpIPv46Uni(ulgmodel.TextCommand):
+	def __init__(self):
+		ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,
+					      [ulgmodel.TextParameter(IPV4_SUBNET_REGEXP,
+								      name=defaults.STRING_IPSUBNET)]),
+
+	
+
+class CiscoShowBgpIPv4Uni(CiscoShowBgpIPv46Uni):
+	COMMAND_TEXT = 'show bgp ipv4 unicast %s'
+
+class CiscoShowBgpIPv6Uni(CiscoShowBgpIPv46Uni):
+	COMMAND_TEXT = 'show bgp ipv6 unicast %s'
 
 class CiscoRouter(ulgmodel.RemoteRouter):
     PS_KEY_BGPV4 = '-bgpipv4'
@@ -647,8 +660,8 @@ class CiscoRouter(ulgmodel.RemoteRouter):
                 _show_bgp_ipv6_uni_neigh_received_routes,
                 _show_bgp_ipv4_uni_neigh_advertised,
                 _show_bgp_ipv6_uni_neigh_advertised,
-                ulgmodel.TextCommand('show bgp ipv4 unicast %s',[ulgmodel.TextParameter(IPV4_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET)]),
-                ulgmodel.TextCommand('show bgp ipv6 unicast %s',[ulgmodel.TextParameter(IPV6_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET)]),
+                CiscoShowBgpIPv4Uni(),
+		CiscoShowBgpIPv6Uni(),
                 ulgmodel.TextCommand('show ip route %s',[ulgmodel.TextParameter(IPV4_ADDRESS_REGEXP,name=defaults.STRING_IPADDRESS)]),
                 ulgmodel.TextCommand('show ipv6 unicast route %s',[ulgmodel.TextParameter(IPV6_ADDRESS_REGEXP,name=defaults.STRING_IPADDRESS)]),
                 ulgmodel.TextCommand('show ip arp %s',[ulgmodel.TextParameter('.*',name=defaults.STRING_NONEORINTORIPADDRESS)]),

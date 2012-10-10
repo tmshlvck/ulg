@@ -304,8 +304,8 @@ class DecoratorHelper:
             label = url
         return """<span style="cursor: pointer" onclick="TINY.box.show({iframe:'%s',boxid:'frameless',fixed:false,width:750,height:450,closejs:function(){closeJS()}})"><u>%s</u></span>""" % (url,label)
 
-    def decorateASN(self,asn):
-        return self.mwin(defaults.getASNURL(str(asn)),"AS"+str(asn))
+    def decorateASN(self,asn,prefix="AS"):
+        return self.mwin(defaults.getASNURL(str(asn)),prefix+str(asn))
 
     def decorateIP(self,ip):
         return self.mwin(defaults.getIPPrefixURL(ip),ip)

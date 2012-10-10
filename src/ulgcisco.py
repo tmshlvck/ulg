@@ -55,7 +55,7 @@ MAC_ADDRESS_REGEXP = '^[0-9a-fA-F]{4}\.[0-9a-fA-F]{4}\.[0-9a-fA-F]{4}$'
 BGP_RED_STATES = ['Idle', 'Active', '(NoNeg)']
 BGP_YELLOW_STATES = ['Idle (Admin)',]
 
-REGEX_SH_BGP_UNI_ASLINE = '^\s*([0-9\s]+)(|,.*)\s*$'
+REGEX_SH_BGP_UNI_ASLINE = '^(\s*)([0-9\s]+)(|,.*)\s*$'
 regex_sh_bgp_uni_asline = re.compile(REGEX_SH_BGP_UNI_ASLINE)
 
 REGEX_SH_BGP_UNI_AGGR = '\s*\(aggregated by ([0-9]+) [0-9a-fA-F:\.]+\).*'
@@ -76,8 +76,8 @@ regex_sh_bgp_uni_peerline = re.compile(REGEX_SH_BGP_UNI_PEERLINE)
 REGEX_SH_BGP_UNI_ORIGLINE_BEST = '\s*Origin\s.*\sbest.*'
 regex_sh_bgp_uni_origline_best = re.compile(REGEX_SH_BGP_UNI_ORIGLINE_BEST)
 
-COMMAND_NAME_GRAPH4 = 'Graph - show bgp ipv4 uni <IP subnet>'
-COMMAND_NAME_GRAPH6 = 'Graph - show bgp ipv6 uni <IP subnet>'
+COMMAND_NAME_GRAPH4 = 'Graph - show bgp ipv4 unicast <IP subnet>'
+COMMAND_NAME_GRAPH6 = 'Graph - show bgp ipv6 unicast <IP subnet>'
 
 def cisco_parse_sh_bgp_uni(lines,prependas):
 	def split_ases(ases):
@@ -105,8 +105,8 @@ def cisco_parse_sh_bgp_uni(lines,prependas):
 		if(table_started):
 			m = regex_sh_bgp_uni_asline.match(l)
 			if(m):
-				ases = ["AS"+str(asn) for asn in [prependas] + split_ases(m.group(1))]
-				infotext = m.group(2)
+				ases = ["AS"+str(asn) for asn in [prependas] + split_ases(m.group(2))]
+				infotext = m.group(3)
 				if(infotext):
 					paths.append((ases,get_info(infotext)))
 				else:
@@ -621,16 +621,56 @@ class CiscoCommandGraphShowBgpIPv6Uni(CiscoCommandGraphShowBgpIPv46Uni):
 class CiscoShowBgpIPv46Uni(ulgmodel.TextCommand):
 	def __init__(self):
 		ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,
-					      [ulgmodel.TextParameter(IPV4_SUBNET_REGEXP,
+					      [ulgmodel.TextParameter(self.PARAM_REGEXP,
 								      name=defaults.STRING_IPSUBNET)]),
 
-	
+	def decorateResult(self,session,decorator_helper=None):
+		def decorateLine(l):			
+			m = regex_sh_bgp_uni_asline.match(l)
+			if(m):
+				r = m.group(1)
+				ases = str.split(m.group(2))
+				for asn in ases:
+					r = r + decorator_helper.decorateASN(asn,prefix='')
+					if(asn != ases[-1]):
+						r = r + ' '
+				r = r + m.group(3)
+				return r
+			else:
+				return l
+
+
+		s = str.splitlines(session.getResult())
+		lbeg = 0
+		lend = len(s)
+		if(session.getRange() != None and self.showRange()):
+			lbeg = session.getRange()
+			lend = session.getRange()+defaults.range_step+1
+
+		r=''
+		table_started=False
+		start_string=False
+		for sl in s[lbeg:lend]:
+			if(table_started):
+				r += decorateLine(sl) + "\n"
+			else:
+				r += sl + "\n"
+				if(start_string):
+					table_started = True
+				else:
+					if(regex_sh_bgp_uni_table_start.match(sl)):
+						start_string = True
+
+		return ("<pre>\n%s\n</pre>" % r, len(s))
+
 
 class CiscoShowBgpIPv4Uni(CiscoShowBgpIPv46Uni):
 	COMMAND_TEXT = 'show bgp ipv4 unicast %s'
+	PARAM_REGEXP = IPV4_SUBNET_REGEXP
 
 class CiscoShowBgpIPv6Uni(CiscoShowBgpIPv46Uni):
 	COMMAND_TEXT = 'show bgp ipv6 unicast %s'
+	PARAM_REGEXP = IPV6_SUBNET_REGEXP
 
 class CiscoRouter(ulgmodel.RemoteRouter):
     PS_KEY_BGPV4 = '-bgpipv4'

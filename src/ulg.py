@@ -38,6 +38,9 @@ import defaults
 
 import ulgmodel
 
+IPV4_ANNOTATE_REGEXP = '([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(/[0-9]{1,2})?)'
+ipv4_annotate_regexp = re.compile(IPV4_ANNOTATE_REGEXP)
+
 ### CGI output handler
 
 class Session(object):
@@ -307,8 +310,27 @@ class DecoratorHelper:
     def decorateASN(self,asn,prefix="AS"):
         return self.mwin(defaults.getASNURL(str(asn)),prefix+str(asn))
 
-    def decorateIP(self,ip):
+    def decoratePrefix(self,ip):
         return self.mwin(defaults.getIPPrefixURL(ip),ip)
+
+    def annotatePrefixes(self,line):
+        s=0
+        r=''
+        for m in ipv4_annotate_regexp.finditer(line):
+            r = r + line[s:m.start()]
+            r = r + self.decoratePrefix(line[m.start():m.end()])
+            s = m.end()
+        return r + line[s:]
+
+    def annotateIPs(self,line):
+        s=0
+        r=''
+        for m in ipv4_annotate_regexp.finditer(line):
+            r = r + line[s:m.start()]
+            r = r + self.decoratePrefix(line[m.start():m.end()])
+            s = m.end()
+        return r + line[s:]
+        
 
 
 class ULGCgi:

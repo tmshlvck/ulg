@@ -249,7 +249,7 @@ class BirdShowRouteCommand(ulgmodel.TextCommand):
             if(ml):
                 # generate table content
                 result.append([
-                        (decorator_helper.decorateIP(ml[0]),),
+                        (decorator_helper.decoratePrefix(ml[0]),),
                         (ml[1],),
                         (ml[2],),
                         (ml[3],),
@@ -317,9 +317,9 @@ class BirdShowRouteAllCommand(ulgmodel.TextCommand):
                 for asn in ases:
                     r = r + decorator_helper.decorateASN(asn,prefix='')
                     r = r + ' '
-                return r
+                return decorator_helper.annotateIPs(r)
             else:
-                return l
+                return decorator_helper.annotateIPs(l)
 
 
         s = str.splitlines(session.getResult())

@@ -502,7 +502,7 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
 		# generate table content
 		result.append([
 				(ml[0],),
-				(decorator_helper.decorateIP(ml[1]),),
+				(decorator_helper.decoratePrefix(ml[1]),),
 				(ml[2],),
 				(ml[3],),
 				(ml[4],),
@@ -637,9 +637,9 @@ class CiscoShowBgpIPv46Uni(ulgmodel.TextCommand):
 					if(asn != ases[-1]):
 						r = r + ' '
 				r = r + m.group(3)
-				return r
+				return decorator_helper.annotateIPs(r)
 			else:
-				return l
+				return decorator_helper.annotateIPs(l)
 
 
 		s = str.splitlines(session.getResult())

@@ -356,27 +356,10 @@ class BirdGraphShowRouteAll(ulgmodel.TextCommand):
     def showRange(self):
         return False
 
-
-class BirdRouterLocal(ulgmodel.LocalRouter):
+class BirdRouter(ulgmodel.Router):
     RESCAN_PEERS_COMMAND = 'show protocols'
     RESCAN_TABLES_COMMAND = 'show symbols'
     DEFAULT_PROTOCOL_FLTR = '^(Kernel|Device|Static|BGP).*$'
-
-    def __init__(self,sock=defaults.default_bird_sock,commands=None,proto_fltr=None,asn='My ASN'):
-        super(self.__class__,self).__init__()
-        self.sock = sock
-        self.setName('localhost')
-        self.setASN(asn)
-        if(proto_fltr):
-            self.proto_fltr = proto_fltr
-        else:
-            self.proto_fltr = self.DEFAULT_PROTOCOL_FLTR
-
-        # command autoconfiguration might run only after other parameters are set
-        if(commands):
-            self.setCommands(commands)
-        else:
-            self.setCommands(self._getDefaultCommands())
 
     def _getDefaultCommands(self):
         sh_proto_all = BirdShowProtocolsAllCommand(self.getBGPPeers())
@@ -392,6 +375,24 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
                 ulgmodel.TextCommand('show status'),
                 ulgmodel.TextCommand('show memory')
                 ]
+
+class BirdRouterLocal(ulgmodel.LocalRouter,BirdRouter):
+    def __init__(self,sock=defaults.default_bird_sock,commands=None,proto_fltr=None,asn='My ASN'):
+        ulgmodel.LocalRouter.__init__(self)
+        self.sock = sock
+        self.setName('localhost')
+        self.setASN(asn)
+        if(proto_fltr):
+            self.proto_fltr = proto_fltr
+        else:
+            self.proto_fltr = self.DEFAULT_PROTOCOL_FLTR
+
+        # command autoconfiguration might run only after other parameters are set
+        if(commands):
+            self.setCommands(commands)
+        else:
+            self.setCommands(self._getDefaultCommands())
+
 
     def runRawCommand(self,command,outfile):
         def parseBirdSockLine(line):
@@ -508,3 +509,8 @@ class BirdRouterLocal(ulgmodel.LocalRouter):
 
     def getRoutingTables(self):
         return self.rescanRoutingTables()
+
+
+class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
+    pass
+    

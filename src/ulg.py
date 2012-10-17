@@ -32,6 +32,7 @@ import urllib
 import md5
 import time
 import random
+import subprocess
 
 import config
 import defaults
@@ -273,6 +274,12 @@ class DecoratorHelper:
     def getSpecialContentURL(self,sessionid,parameters={}):
         return self.getURL('getfile',dict({'sessionid':sessionid},**parameters))
 
+    def getWhoisURL(self,key,objtype=None):
+        if(objtype):
+            return self.getURL('whois',dict({'key':key,'objtype':objtype}))
+        else:
+            return self.getURL('whois',dict({'key':key}))
+
     def getRouterID(self,router):
         for ridx,r in enumerate(config.routers):
             if(r == router):
@@ -308,10 +315,10 @@ class DecoratorHelper:
         return """<span style="cursor: pointer" onclick="TINY.box.show({iframe:'%s',boxid:'frameless',fixed:false,width:750,height:450,closejs:function(){closeJS()}})"><u>%s</u></span>""" % (url,label)
 
     def decorateASN(self,asn,prefix="AS"):
-        return self.mwin(defaults.getASNURL(str(asn)),prefix+str(asn))
+        return self.mwin(self.getWhoisURL('AS'+str(asn),'AS'),prefix+str(asn))
 
     def decoratePrefix(self,ip):
-        return self.mwin(defaults.getIPPrefixURL(ip),ip)
+        return self.mwin(self.getWhoisURL(ip,'IP'),ip)
 
     def annotatePrefixes(self,line):
         s=0
@@ -629,6 +636,41 @@ class ULGCgi:
         # speciality here: the function is responsible for printing the output itself
         session.getCommand().getSpecialContent(session,**params)
 
+    def runULGWhois(self,key,objtype):
+        url=None
+        urlc=None
+        if(objtype == 'IP'):
+            ot='inetnum,inet6num'
+            url=defaults.getIPPrefixURL(key)
+            urlc=defaults.STRING_DETAILS+' '+str(key)
+        elif(objtype == 'AS'):
+            ot='aut-num'
+            url=defaults.getASNURL(key)
+            urlc=defaults.STRING_DETAILS+' '+key
+        else:
+            ot='aut-num,inetnum,inet6num'
+
+        template = self.loader.load(defaults.whois_template_file)
+
+        s = subprocess.Popen([defaults.bin_whois,
+                              '-r',
+                              '-H',
+                              '-T '+ot,
+                              key], stdout=subprocess.PIPE)
+        res=''
+        begin = False
+        for l in s.stdout.readlines():
+            if(re.match('^\s*$',l) and not begin):
+                continue
+            if(l[0] != '%'):
+                res=res+l
+                begin = True
+
+        return template.generate(result=Markup(res),
+                                 url=url,
+                                 url_caption=urlc,
+                                 ).render('html', doctype='html')
+
 
     def index(self, **params):
         self.print_text_html()
@@ -647,6 +689,13 @@ class ULGCgi:
 
     def getfile(self,sessionid=None,**params):
         self.getULGSpecialContent(sessionid,**params)
+
+    def whois(self,key,objtype=None):
+        self.print_text_html()
+        if(key):
+            print self.runULGWhois(key,objtype)
+        else:
+            print self.HTTPRedirect(self.decorator_helper.getErrorURL())
 
     def error(self,sessionid=None,**params):
         self.print_text_html()
@@ -675,6 +724,8 @@ if __name__=="__main__":
                 handler.display(**params)
             elif(action == 'getfile'):
                 handler.getfile(**params)
+            elif(action == 'whois'):
+                handler.whois(**params)
             elif(action == 'error'):
                 handler.error(**params)
             elif(action == 'debug'):

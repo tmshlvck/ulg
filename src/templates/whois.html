@@ -1,0 +1,24 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:py="http://genshi.edgewall.org/">
+  <head>
+    <title>Universal Looking Glass - Whois</title>
+  </head>
+  <body class="whois">
+    <div id="begin">
+      <py:if test="defined('url') and url != None">
+	<a href="${url}" target="_blank">${url_caption}</a>
+	<hr/>
+      </py:if>
+    </div>
+    <div id="content">
+      <py:if test="defined('result') and result != None">
+	<pre>
+${result}
+	</pre>
+      </py:if>
+    </div>
+    <div id="footer">
+    </div>
+  </body>
+</html>

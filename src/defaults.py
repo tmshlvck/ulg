@@ -33,10 +33,12 @@ usage_counter_file = '/tmp/ulg.lock'
 log_file = '/tmp/ulg.log'
 default_bird_sock = '/var/run/bird.ctl'
 default_bird_sock_timeout = 30
+bin_whois = '/usr/bin/whois'
 
 # Template dir relative to the index.py script
 template_dir = 'templates'
 index_template_file = 'index.html'
+whois_template_file = 'whois.html'
 table_decorator_template_file = 'tabledecorator.html'
 
 # Paths to external programs
@@ -58,10 +60,11 @@ STRING_INTERFACE = "Interface"
 STRING_SOCKET_TIMEOUT = "Socket communication timed out. See log."
 STRING_PEERID = "Peer ID"
 STRING_RTABLE = "Routing Table"
+STRING_DETAILS = "Details of"
 
 # URL generator functions
 def getASNURL(asn):
-    return 'https://apps.db.ripe.net/search/query.html?searchtext=AS%s&flags=C&sources=&grssources=RIPE;AFRINIC;APNIC;ARIN;LACNIC;JPIRR;RADB&inverse=&types=AUT_NUM' % asn
+    return 'https://apps.db.ripe.net/search/query.html?searchtext=%s&flags=C&sources=&grssources=RIPE;AFRINIC;APNIC;ARIN;LACNIC;JPIRR;RADB&inverse=&types=AUT_NUM' % asn
 
 def getIPPrefixURL(prefix):
     return 'https://apps.db.ripe.net/search/query.html?searchtext=%s&flags=C&sources=&grssources=RIPE;AFRINIC;APNIC;ARIN;LACNIC;JPIRR;RADB&inverse=&types=INET6NUM;INETNUM' % prefix

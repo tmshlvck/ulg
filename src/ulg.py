@@ -640,22 +640,20 @@ class ULGCgi:
         url=None
         urlc=None
         if(objtype == 'IP'):
-            ot='inetnum,inet6num'
             url=defaults.getIPPrefixURL(key)
             urlc=defaults.STRING_DETAILS+' '+str(key)
         elif(objtype == 'AS'):
-            ot='aut-num'
             url=defaults.getASNURL(key)
             urlc=defaults.STRING_DETAILS+' '+key
-        else:
-            ot='aut-num,inetnum,inet6num'
+
+        m = re.match('^\s*([^/]+)/[0-9]+\s*$',key)
+        if(m):
+            key = m.group(1)
 
         template = self.loader.load(defaults.whois_template_file)
 
         s = subprocess.Popen([defaults.bin_whois,
-                              '-r',
                               '-H',
-                              '-T '+ot,
                               key], stdout=subprocess.PIPE)
         res=''
         begin = False

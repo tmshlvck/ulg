@@ -105,7 +105,7 @@ def cisco_parse_sh_bgp_uni(lines,prependas):
 		if(table_started):
 			m = regex_sh_bgp_uni_asline.match(l)
 			if(m):
-				ases = ["AS"+str(asn) for asn in [prependas] + split_ases(m.group(2))]
+				ases = [ulgmodel.annotateAS("AS"+str(asn)) for asn in [prependas] + split_ases(m.group(2))]
 				infotext = m.group(3)
 				if(infotext):
 					paths.append((ases,get_info(infotext)))
@@ -600,11 +600,17 @@ class CiscoCommandGraphShowBgpIPv46Uni(ulgmodel.TextCommand):
                 name=name)
 
     def decorateResult(self,session,decorator_helper=None):
-        return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),"BGP graph"),1)
+        if(session.isFinished()):
+		return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),"BGP graph"),1)
+	else:
+		return ('',0)
+
+    def finishHook(self,session):
+	    session.setData(cisco_parse_sh_bgp_uni(session.getResult(),str(session.getRouter().getASN())))
 
     def getSpecialContent(self,session,**params):
+        paths = session.getData()
         print "Content-type: image/png\n"
-	paths = cisco_parse_sh_bgp_uni(session.getResult(),str(session.getRouter().getASN()))
         ulggraph.bgp_graph_gen(reduce_bgp_paths(paths),start=session.getRouter().getName(),
 			       end=session.getParameters()[0])
 

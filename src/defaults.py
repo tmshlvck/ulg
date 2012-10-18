@@ -61,6 +61,7 @@ STRING_SOCKET_TIMEOUT = "Socket communication timed out. See log."
 STRING_PEERID = "Peer ID"
 STRING_RTABLE = "Routing Table"
 STRING_DETAILS = "Details of"
+STRING_UNKNOWN = "(unknown)"
 
 # URL generator functions
 def getASNURL(asn):

@@ -32,12 +32,12 @@ import urllib
 import md5
 import time
 import random
-import subprocess
 
 import config
 import defaults
 
 import ulgmodel
+import whois
 
 IPV4_ANNOTATE_REGEXP = '([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(/[0-9]{1,2})?)'
 ipv4_annotate_regexp = re.compile(IPV4_ANNOTATE_REGEXP)
@@ -55,6 +55,7 @@ class Session(object):
             self.finished=copy.finished
             self.range=copy.range
             self.resultlen=copy.resultlen
+            self.data=copy.data
 
         else:
             if(sessionid == None):
@@ -69,6 +70,7 @@ class Session(object):
             self.finished=finished
             self.range=resrange
             self.resultlen=0
+            self.data=None
 
         self.save()
 
@@ -238,6 +240,13 @@ class Session(object):
 
     def getMaxRange(self):
         return self.resultlines
+
+    def getData(self):
+        return self.data
+
+    def setData(self,data):
+        self.data = data
+        self.save()
 
 
 class DecoratorHelper:
@@ -450,6 +459,7 @@ class ULGCgi:
             ulgmodel.debug("Running command: "+session.getCommand().getName())
             try:
                 session.getRouter().runAsyncCommand(session.getCommand(),session.getParameters(),FakeSessionFile(session))
+                session.getCommand().finishHook(session)
             except Exception as e:
                 ulgmodel.log("ERROR: Exception occured while running a command:" + traceback.format_exc())
                 session.setResult("ERROR in commandThreadBody:\n"+traceback.format_exc())
@@ -652,18 +662,7 @@ class ULGCgi:
 
         template = self.loader.load(defaults.whois_template_file)
 
-        s = subprocess.Popen([defaults.bin_whois,
-                              '-H',
-                              key], stdout=subprocess.PIPE)
-        res=''
-        begin = False
-        for l in s.stdout.readlines():
-            if(re.match('^\s*$',l) and not begin):
-                continue
-            if(l[0] != '%'):
-                res=res+l
-                begin = True
-
+        res = whois.lookup(key)
         return template.generate(result=Markup(res),
                                  url=url,
                                  url_caption=urlc,

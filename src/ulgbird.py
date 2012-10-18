@@ -77,7 +77,7 @@ def bird_parse_sh_route_all(text,prependas):
 
         m = bird_sh_route_all_ases_regexp.match(l)
         if(m):
-            ases = ["AS"+str(asn) for asn in [prependas] + split_ases(m.group(2))]
+            ases = [ulgmodel.annotateAS("AS"+str(asn)) for asn in [prependas] + split_ases(m.group(2))]
             res.append((ases,params))
             params = dict(DEFAULT_PARAMS)
             continue

@@ -28,6 +28,7 @@ import pickle
 import fcntl
 import StringIO
 
+import whois
 import defaults
 
 
@@ -43,6 +44,9 @@ def log(*messages):
 def debug(message):
     log('DEBUG:' + message)
 
+
+def annotateAS(asn):
+    return asn+' | '+whois.lookup_as_name(asn)
 
 
 class PersistentStorage(object):
@@ -265,6 +269,9 @@ class TextCommand(object):
 
     def showRange(self):
         return True
+
+    def finishHook(self,session):
+        pass
     
 class AnyCommand(TextCommand):
     def __init__(self):

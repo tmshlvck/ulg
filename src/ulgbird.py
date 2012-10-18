@@ -343,13 +343,18 @@ class BirdGraphShowRouteAll(ulgmodel.TextCommand):
                 ],
                                       name=name)
 
+    def finishHook(self,session):
+        session.setData(bird_parse_sh_route_all(session.getResult(),str(session.getRouter().getASN())))
+
     def decorateResult(self,session,decorator_helper=None):
-        return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),"BGP graph"),1)
+        if(session.isFinished()):
+            return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),"BGP graph"),1)
+        else:
+            return ('',0)
 
     def getSpecialContent(self,session,**params):
-        pass
+        paths = session.getData()
         print "Content-type: image/png\n"
-	paths = bird_parse_sh_route_all(session.getResult(),str(session.getRouter().getASN()))
         ulggraph.bgp_graph_gen(bird_reduce_paths(paths),start=session.getRouter().getName(),
 			       end=session.getParameters()[1])
 

@@ -42,7 +42,8 @@ def log(*messages):
         pass
 
 def debug(message):
-    log('DEBUG:' + message)
+    if(defaults.debug):
+        log('DEBUG:' + message)
 
 
 def annotateAS(asn):

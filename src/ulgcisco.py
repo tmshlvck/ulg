@@ -276,6 +276,7 @@ def matchCiscoBGPLines(header,lines):
             result[-1].append(normalize(l[lgp[0]:lgp[1]]))
 
     ulgmodel.debug("DEBUG bgpmatchlines:"+str(result))
+
     return result
 
 def normalizeBGPIPv6SumSplitLines(lines):

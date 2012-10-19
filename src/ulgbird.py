@@ -523,6 +523,9 @@ class BirdRouterLocal(ulgmodel.LocalRouter,BirdRouter):
 
 
 class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
+    PS_KEY_BGP = '-bgppeers'
+    PS_KEY_RT = '-routetab'
+
     def __init__(self,host,user,password=None,port=22,commands=None,proto_fltr=None,asn='My ASN',name=None,bin_birdc=None):
         ulgmodel.RemoteRouter.__init__(self)
         self.setHost(host)
@@ -542,6 +545,11 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
             self.bin_birdc = bin_birdc
         else:
             self.bin_birdc = defaults.default_bin_birdc
+
+        if(defaults.rescan_on_display):
+            self.rescanHook()
+        else:
+            self.loadPersistentInfo()
 
         # command autoconfiguration might run only after other parameters are set
         if(commands):
@@ -588,14 +596,10 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
                 r = r + l + '\n'
             return r
 
-        o = p.before
-        outfile.write(stripFirstLine(o))
-        ulgmodel.debug("BIRD-SSH recv: " + o)
+        outfile.write(stripFirstLine(p.before))
 
         p.sendline(STRING_LOGOUT_COMMAND)
 
-
-### TODO replace by offline version:
 
     def rescanPeers(self):
         res = self.runRawSyncCommand(self.RESCAN_PEERS_COMMAND)
@@ -606,7 +610,7 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
             if(re.match(self.proto_fltr,pspl[1])):
                 peers.append(pspl[0])
 
-        return peers
+        self.bgp_peers = peers
 
     def rescanRoutingTables(self):
         res = self.runRawSyncCommand(self.RESCAN_TABLES_COMMAND)
@@ -617,10 +621,37 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
             if(m and m.group(2).lstrip().rstrip() == STRING_SYMBOL_ROUTING_TABLE):
                 tables.append(m.group(1))
 
-        return tables
+        self.routing_tables = tables
 
     def getBGPPeers(self):
-        return self.rescanPeers()
+        return self.bgp_peers
 
     def getRoutingTables(self):
-        return self.rescanRoutingTables()
+        return self.routing_tables
+
+    def savePersistentInfo(self):
+        key_bgp = self.getHost() + self.PS_KEY_BGP
+        key_rt = self.getHost() + self.PS_KEY_RT
+
+        
+        ps = ulgmodel.PersistentStorage.load()
+        ps.set(key_bgp,self.getBGPPeers())
+        ps.set(key_rt,self.getRoutingTables())
+        ps.save()
+               
+    def loadPersistentInfo(self):
+        key_bgp = self.getHost() + self.PS_KEY_BGP
+        key_rt = self.getHost() + self.PS_KEY_RT
+
+        ps = ulgmodel.PersistentStorage.load()
+        self.bgp_peers = ps.get(key_bgp)
+        self.routing_tables = ps.get(key_rt)
+
+        if(not self.getBGPPeers()) or (not self.getRoutingTables()):
+            self.rescanHook()
+
+
+    def rescanHook(self):
+        self.rescanPeers()
+        self.rescanRoutingTables()
+        self.savePersistentInfo()

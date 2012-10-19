@@ -79,6 +79,8 @@ regex_sh_bgp_uni_origline_best = re.compile(REGEX_SH_BGP_UNI_ORIGLINE_BEST)
 COMMAND_NAME_GRAPH4 = 'Graph - show bgp ipv4 unicast <IP subnet>'
 COMMAND_NAME_GRAPH6 = 'Graph - show bgp ipv6 unicast <IP subnet>'
 
+STRING_COMMAND_LOGOUT = 'logout'
+
 def cisco_parse_sh_bgp_uni(lines,prependas):
 	def split_ases(ases):
 		return str.split(ases)
@@ -846,3 +848,5 @@ class CiscoRouter(ulgmodel.RemoteRouter):
             return r
 
         outfile.write(stripFirstLine(p.before))
+
+	p.send(STRING_COMMAND_LOGOUT)

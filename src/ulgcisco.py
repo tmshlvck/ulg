@@ -850,4 +850,4 @@ class CiscoRouter(ulgmodel.RemoteRouter):
 
         outfile.write(stripFirstLine(p.before))
 
-	p.send(STRING_COMMAND_LOGOUT)
+	p.sendline(STRING_COMMAND_LOGOUT)

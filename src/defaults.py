@@ -25,7 +25,7 @@ range_step = 100                                 # number of table lines in the 
 
 # Settings defaults
 always_start_thread = True # True is highly recommended
-debug = False
+debug = True
 rescan_on_display = False
 persistent_storage_file = '/tmp/ulg.data'
 session_dir = '/tmp'
@@ -33,6 +33,7 @@ usage_counter_file = '/tmp/ulg.lock'
 log_file = '/tmp/ulg.log'
 default_bird_sock = '/var/run/bird.ctl'
 default_bird_sock_timeout = 30
+default_bin_birdc = '/usr/sbin/birdc'
 bin_whois = '/usr/bin/whois'
 
 # Template dir relative to the index.py script

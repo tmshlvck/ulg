@@ -22,6 +22,7 @@
 import os
 import socket
 import re
+import pexpect
 
 import defaults
 
@@ -31,6 +32,11 @@ import ulggraph
 IPV46_SUBNET_REGEXP = '^[0-9a-fA-F:\.]+(/[0-9]{1,2}){0,1}$'
 RTNAME_REGEXP = '^[a-zA-Z0-9]+$'
 STRING_SYMBOL_ROUTING_TABLE = 'routing table'
+
+STRING_EXPECT_SSH_NEWKEY='Are you sure you want to continue connecting'
+STRING_EXPECT_PASSWORD='(P|p)assword:'
+STRING_EXPECT_SHELL_PROMPT_REGEXP = '\n[a-zA-Z0-9\._-]+>'
+STRING_LOGOUT_COMMAND = 'exit'
 
 BIRD_SOCK_HEADER_REGEXP='^([0-9]+)[-\s](.+)$'
 BIRD_SOCK_REPLY_END_REGEXP='^([0-9]+)\s*(\s.*)?$'
@@ -125,7 +131,7 @@ def parseBirdShowProtocols(text,resrange=None):
             if(pl):
                 table.append(pl)
             else:
-                ulgmodel.log("ulgbird.parseBirdShowProtocols skipping unparsable line"+l)
+                ulgmodel.log("ulgbird.parseBirdShowProtocols skipping unparsable line: "+l)
 
     if(resrange):
         return (header,table[resrange:resrange+defaults.range_step],len(table))
@@ -517,5 +523,104 @@ class BirdRouterLocal(ulgmodel.LocalRouter,BirdRouter):
 
 
 class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
-    pass
-    
+    def __init__(self,host,user,password=None,port=22,commands=None,proto_fltr=None,asn='My ASN',name=None,bin_birdc=None):
+        ulgmodel.RemoteRouter.__init__(self)
+        self.setHost(host)
+        self.setUser(user)
+        self.setPassword(password)
+        self.setPort(port)
+        if(name):
+            self.setName(name)
+        else:
+            self.setName(host)
+        self.setASN(asn)
+        if(proto_fltr):
+            self.proto_fltr = proto_fltr
+        else:
+            self.proto_fltr = self.DEFAULT_PROTOCOL_FLTR
+        if(bin_birdc):
+            self.bin_birdc = bin_birdc
+        else:
+            self.bin_birdc = defaults.default_bin_birdc
+
+        # command autoconfiguration might run only after other parameters are set
+        if(commands):
+            self.setCommands(commands)
+        else:
+            self.setCommands(self._getDefaultCommands())
+
+    def getForkNeeded(self):
+        return True
+
+    def runRawCommand(self,command,outfile):
+        p=pexpect.spawn(defaults.bin_ssh+' -p'+str(self.getPort())+' '+str(self.getUser())+'@'+self.getHost()+' '+self.bin_birdc)
+
+        # handle ssh
+        cs = False
+        i=p.expect([STRING_EXPECT_SSH_NEWKEY,STRING_EXPECT_PASSWORD,STRING_EXPECT_SHELL_PROMPT_REGEXP,pexpect.EOF])
+        if(i==0):
+            p.sendline('yes')
+            i=p.expect([STRING_EXPECT_SSH_NEWKEY,STRING_EXPECT_PASSWORD,STRING_EXPECT_SHELL_PROMPT_REGEXP,pexpect.EOF])
+
+        if(i==0):
+            raise Exception("pexpect session failed: Can not save SSH key.")
+        elif(i==1):
+            p.sendline(self.password)
+        elif(i==2):
+            p.sendline(command)
+            cs = True
+        elif(i==3):
+            raise Exception("pexpect session failed: Connection timeout or SSH error.")
+        else:
+            raise Exception("pexpect session failed: SSH error.")
+
+        if(not cs):
+            p.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,pexpect.EOF])
+            p.sendline(command)
+
+        p.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,pexpect.EOF])
+        p.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,pexpect.EOF])
+
+        def stripFirstLine(string):
+            lines = str.splitlines(string)
+            r = ''
+            for l in lines[1:]:
+                r = r + l + '\n'
+            return r
+
+        o = p.before
+        outfile.write(stripFirstLine(o))
+        ulgmodel.debug("BIRD-SSH recv: " + o)
+
+        p.sendline(STRING_LOGOUT_COMMAND)
+
+
+### TODO replace by offline version:
+
+    def rescanPeers(self):
+        res = self.runRawSyncCommand(self.RESCAN_PEERS_COMMAND)
+        psp = parseBirdShowProtocols(res)
+
+        peers = []
+        for pspl in psp[1]:
+            if(re.match(self.proto_fltr,pspl[1])):
+                peers.append(pspl[0])
+
+        return peers
+
+    def rescanRoutingTables(self):
+        res = self.runRawSyncCommand(self.RESCAN_TABLES_COMMAND)
+
+        tables = []
+        for l in str.splitlines(res):
+            m = bird_show_symbols_line_regexp.match(l)
+            if(m and m.group(2).lstrip().rstrip() == STRING_SYMBOL_ROUTING_TABLE):
+                tables.append(m.group(1))
+
+        return tables
+
+    def getBGPPeers(self):
+        return self.rescanPeers()
+
+    def getRoutingTables(self):
+        return self.rescanRoutingTables()

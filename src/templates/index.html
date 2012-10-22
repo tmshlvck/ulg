@@ -3,7 +3,8 @@
       xmlns:py="http://genshi.edgewall.org/">
   <head>
     <title>Universal Looking Glass</title>
-    <link rel="stylesheet" href="ulg.css" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="stylesheet" href="style.css" />
     <py:if test="defined('refresh')">
       <meta http-equiv="refresh" content="$refresh" py:if="defined('refresh') and (refresh>0)" />
     </py:if>
@@ -20,15 +21,12 @@
 
             document.getElementById("paramsect").innerHTML='                                                                            \
             <py:for each="pidx,param in enumerate(routers[ridx].listCommands()[cidx].getParamSpecs())">
-	      <tr height="10"></tr>                                                                                                     \
-	      <tr>                                                                                                                      \
-		<th align="left">                                                                                                       \
+		<label for="param${pidx}">                                                                                           \
 		  ${pidx+3}. ${param.getName()}:                                                                                        \
-		</th>                                                                                                                   \
+		</label>                                                                                                                   \
 		<py:choose>
 		  <py:when test="param.getType() == 'select'">
-		    <td align="left">                                                                                                   \
-		      <select name="param${pidx}">                                                                                      \
+		      <select name="param${pidx}" id="param${pidx}">                                                                   \
 			<py:for each="paridx,partuple in enumerate(param.getOptions())">
 			  <py:choose>
 			    <py:when test="default_routerid == ridx and default_commandid == cidx and defined('default_params') and partuple[0] == default_params[pidx]">
@@ -49,22 +47,18 @@
 			  </py:choose>
 			</py:for>
 		      </select>                                                                                                         \
-		    </td>                                                                                                               \
 		  </py:when>
 		  <py:otherwise>
-		    <td align="left">                                                                                                   \
 		      <py:choose>
 			<py:when test="default_routerid == ridx and default_commandid == cidx and defined('default_params') and pidx &lt; len(default_params)">
-			  <input type="text" name="param${pidx}" value="${default_params[pidx]}" />                                     \
+	  <input type="text" name="param${pidx}" id="param${pidx}" value="${default_params[pidx]}" onfocus="this.className='hover'" onblur="this.className='out'" />               \
 			</py:when>
 			<py:otherwise>
-			  <input type="text" name="param${pidx}" value="${param.getDefault()}" />                                       \
+	 <input type="text" name="param${pidx}" id="param${pidx}" value="${param.getDefault()}" onfocus="this.className='hover'" onblur="this.className='out'" />  \
 			</py:otherwise>
 		      </py:choose>
-		    </td>                                                                                                               \
 		  </py:otherwise>
 		</py:choose>
-	      </tr>                                                                                                                     \
 	    </py:for>';
 	    }
 	</py:for>
@@ -99,6 +93,7 @@
     <script>
       window.onload=updateFormCommands; 
     </script>
+    <div id="wrapper">
     <div id="header">
       <py:choose>
 	<py:when test="defaults.header">
@@ -113,55 +108,56 @@
     <form action="${getFormURL()}" method="post">
       <input type="hidden" name="sessionid" value="$default_sessionid" py:if="defined('default_sessionid') and (default_sessionid)" />
       <input type="hidden" name="resrange" value="$resrange" py:if="defined('resrange')" />
-      <table summary="Form settings">
-	<tbody>
-	  <tr>
-            <th align="left">1. Router selection:</th>
-	    <td>
-	      <select id="routerselect" name="routerid" onchange="updateFormCommands()">
-		<py:for each="ridx,rtr in enumerate(routers)">
-		  <py:choose>
-		    <py:when test="ridx == default_routerid">
-		      <option value="$ridx" selected="selected">
-			${rtr.getName()}
-		      </option>
-		    </py:when>
-		    <py:otherwise>
-		      <option value="$ridx">
-			${rtr.getName()}
-		      </option>
-		    </py:otherwise>
-		  </py:choose>
-		</py:for>
-	      </select>
-            </td>
-	  </tr>
-	  <tr height="10"></tr>
-	  <tr>
-	    <th align="left" valign="top">2. Command selection:</th>
-	    <td align="left">
+
+
+<div class="form">
+<fieldset>
+  <legend></legend>
+      <label  for="routerselect">1. Router selection:</label>
+      <select id="routerselect" name="routerid" onchange="updateFormCommands()">
+	<py:for each="ridx,rtr in enumerate(routers)">
+	  <py:choose>
+	    <py:when test="ridx == default_routerid">
+	      <option value="$ridx" selected="selected">
+		${rtr.getName()}
+	      </option>
+	    </py:when>
+	    <py:otherwise>
+	      <option value="$ridx">
+		${rtr.getName()}
+	      </option>
+	    </py:otherwise>
+	  </py:choose>
+	</py:for>
+      </select>
+
+</fieldset>
+<fieldset>
+
+
+	    <label for="commandselect">2. Command selection:</label> 
 	      <select id="commandselect" name="commandid" onchange="updateFormParams()">
 	      </select>
-	    </td>
-	  </tr>
-	</tbody>
-	<tbody id="paramsect">
-	</tbody>
-	<tbody>
-	  <tr height="10"></tr>
-	  <tr>
-            <th><br/></th>
-            <td>
+
+</fieldset>
+<fieldset>
+
+	<div id="paramsect"> <!-- TODO: change dynamic display -->
+	</div>
+
+
+</fieldset>
+<fieldset>
+<label>&nbsp;</label> 
               <input type="submit" value="Submit" />
-            </td>
-	  </tr>
-	</tbody>
-      </table>
+</fieldset>
+</div>
+
+
     </form>
     <py:choose>
       <py:when test="defined('result') or defined('refresh')">
 	<div id="result">
-	  <hr/>
 	  <py:choose>
 	    <py:when test="defined('result') and result">
 	      ${result}
@@ -201,9 +197,10 @@
 	</div>
       </py:when>
     </py:choose>
+<div class="push"></div>
+    </div>
     <div id="footer">
-      <hr/>
-      <p class="legales" align="right"><small>(c) 2012 Tomas Hlavacek</small></p>
+      <p class="legales" align="right"><small>&copy; (CC-BY) 2012 Tomas Hlavacek</small></p>
     </div>
   </body>
 </html>

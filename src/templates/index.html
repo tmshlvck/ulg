@@ -51,10 +51,10 @@
 		  <py:otherwise>
 		      <py:choose>
 			<py:when test="default_routerid == ridx and default_commandid == cidx and defined('default_params') and pidx &lt; len(default_params)">
-	  <input type="text" name="param${pidx}" id="param${pidx}" value="${default_params[pidx]}" onfocus="this.className='hover'" onblur="this.className='out'" />               \
+	  <input type="text" name="param${pidx}" id="param${pidx}" value="${default_params[pidx]}" onfocus="this.className=\'hover\'" onblur="this.className=\'out\'" />               \
 			</py:when>
 			<py:otherwise>
-	 <input type="text" name="param${pidx}" id="param${pidx}" value="${param.getDefault()}" onfocus="this.className='hover'" onblur="this.className='out'" />  \
+	 <input type="text" name="param${pidx}" id="param${pidx}" value="${param.getDefault()}" onfocus="this.className=\'hover\'" onblur="this.className=\'out\'" />  \
 			</py:otherwise>
 		      </py:choose>
 		  </py:otherwise>

@@ -7,12 +7,12 @@ ULG development version 0.1
 
 Basic instalation procedure is:
 
-1) install prerequisites: Python 2.7, Genshi, Python CGI module, urllib
-   and pexpect
+1) install prerequisites: Python 2.6 or 2.7, Genshi, Python CGI module, urllib,
+   pexpect and pygraph
 2) deploy files in src directory to some place in WWW tree
 3) cp config.py.example config.py
 4) edit config.py to set up routers and credentials
-5) edit defaults.py to set up paths
+5) edit defaults.py to set up correct paths
 6) create .htaccess file with following contents:
 
 <FilesMatch "(.pyc|.*~)">
@@ -27,10 +27,16 @@ AddHandler cgi-script .py
 7) access http://yourserver/path-to-ulg/index.py via browser
 8) change strings and templates in defaults.py and templates/*.html .
 
+Procedure for Debian Squeeze/Wheezy:
+1)
+apt-get install python python-pexpect python-pygraph python-genshi
+
+All other steps are the same as in generic case.
+
 Contacts:
 
-1) Author: tmshlvck@gmail.com or tomas.hlavacek@nic.cz
-2) GIT hub https://github.com/tmshlvck/ulg
+* Author: tmshlvck@gmail.com or tomas.hlavacek@nic.cz
+* GIT hub https://github.com/tmshlvck/ulg
 
 
 Future plans:

@@ -526,7 +526,7 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
     PS_KEY_BGP = '-bgppeers'
     PS_KEY_RT = '-routetab'
 
-    def __init__(self,host,user,password=None,port=22,commands=None,proto_fltr=None,asn='My ASN',name=None,bin_birdc=None):
+    def __init__(self,host,user,password='',port=22,commands=None,proto_fltr=None,asn='My ASN',name=None,bin_birdc=None,bin_ssh=None):
         ulgmodel.RemoteRouter.__init__(self)
         self.setHost(host)
         self.setUser(user)
@@ -546,6 +546,11 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
         else:
             self.bin_birdc = defaults.default_bin_birdc
 
+        if(bin_birdc):
+            self.bin_ssh = bin_ssh
+        else:
+            self.bin_ssh = defaults.bin_ssh
+
         if(defaults.rescan_on_display):
             self.rescanHook()
         else:
@@ -561,7 +566,7 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
         return True
 
     def runRawCommand(self,command,outfile):
-        p=pexpect.spawn(defaults.bin_ssh+' -p'+str(self.getPort())+' '+str(self.getUser())+'@'+self.getHost()+' '+self.bin_birdc)
+        p=pexpect.spawn(self.bin_ssh+' -p'+str(self.getPort())+' '+str(self.getUser())+'@'+self.getHost()+' '+self.bin_birdc)
 
         # handle ssh
         cs = False

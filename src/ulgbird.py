@@ -566,33 +566,33 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
         return True
 
     def runRawCommand(self,command,outfile):
-        p=pexpect.spawn(self.bin_ssh+' -p'+str(self.getPort())+' '+str(self.getUser())+'@'+self.getHost()+' '+self.bin_birdc)
+        c = '/bin/bash -c \'echo "'+command+'" | '+self.bin_ssh+' -p'+str(self.getPort())+' '+str(self.getUser())+'@'+self.getHost()+' '+self.bin_birdc+'\''
+        p=pexpect.spawn(c)
+
+#        p.logfile = open('/tmp/ulgbird.log', 'w')
 
         # handle ssh
-        cs = False
-        i=p.expect([STRING_EXPECT_SSH_NEWKEY,STRING_EXPECT_PASSWORD,STRING_EXPECT_SHELL_PROMPT_REGEXP,pexpect.EOF])
-        if(i==0):
-            p.sendline('yes')
-            i=p.expect([STRING_EXPECT_SSH_NEWKEY,STRING_EXPECT_PASSWORD,STRING_EXPECT_SHELL_PROMPT_REGEXP,pexpect.EOF])
+        y=0
+        p=0
+        while True:
+            i=p.expect([STRING_EXPECT_SSH_NEWKEY,STRING_EXPECT_PASSWORD,pexpect.EOF,pexpect.TIMEOUT])
+            if(i==0):
+                if(y>1):
+                    raise Exception("pexpect session failed: Can not save SSH key.")
 
-        if(i==0):
-            raise Exception("pexpect session failed: Can not save SSH key.")
-        elif(i==1):
-            p.sendline(self.password)
-        elif(i==2):
-            p.sendline(command)
-            cs = True
-        elif(i==3):
-            raise Exception("pexpect session failed: Connection timeout or SSH error.")
-        else:
-            raise Exception("pexpect session failed: SSH error.")
+                p.sendline('yes')
+                y+=1
+            elif(i==1):
+                if(p>1):
+                    raise Exception("pexpect session failed: Password not accepted.")
 
-        if(not cs):
-            p.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,pexpect.EOF])
-            p.sendline(command)
+                p.sendline(self.password)
+                p+=1
+            elif(i==2): # EOF -> process output
+                break
+            else:
+                raise Exception("pexpect session failed: Unknown error. last output: "+p.before)
 
-        p.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,pexpect.EOF])
-        p.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,pexpect.EOF])
 
         def stripFirstLine(string):
             lines = str.splitlines(string)
@@ -601,10 +601,9 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
                 r = r + l + '\n'
             return r
 
-        outfile.write(stripFirstLine(p.before))
-
-        p.sendline(STRING_LOGOUT_COMMAND)
-
+        out = p.before
+#        ulgmodel.debug("BIRD OUT: "+out)
+        outfile.write(stripFirstLine(out))
 
     def rescanPeers(self):
         res = self.runRawSyncCommand(self.RESCAN_PEERS_COMMAND)

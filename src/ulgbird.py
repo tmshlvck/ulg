@@ -567,31 +567,31 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
 
     def runRawCommand(self,command,outfile):
         c = '/bin/bash -c \'echo "'+command+'" | '+self.bin_ssh+' -p'+str(self.getPort())+' '+str(self.getUser())+'@'+self.getHost()+' '+self.bin_birdc+'\''
-        p=pexpect.spawn(c)
+        s=pexpect.spawn(c)
 
-#        p.logfile = open('/tmp/ulgbird.log', 'w')
+#        s.logfile = open('/tmp/ulgbird.log', 'w')
 
         # handle ssh
         y=0
         p=0
         while True:
-            i=p.expect([STRING_EXPECT_SSH_NEWKEY,STRING_EXPECT_PASSWORD,pexpect.EOF,pexpect.TIMEOUT])
+            i=s.expect([STRING_EXPECT_SSH_NEWKEY,STRING_EXPECT_PASSWORD,pexpect.EOF,pexpect.TIMEOUT])
             if(i==0):
                 if(y>1):
                     raise Exception("pexpect session failed: Can not save SSH key.")
 
-                p.sendline('yes')
+                s.sendline('yes')
                 y+=1
             elif(i==1):
                 if(p>1):
                     raise Exception("pexpect session failed: Password not accepted.")
 
-                p.sendline(self.password)
+                s.sendline(self.password)
                 p+=1
             elif(i==2): # EOF -> process output
                 break
             else:
-                raise Exception("pexpect session failed: Unknown error. last output: "+p.before)
+                raise Exception("pexpect session failed: Unknown error. last output: "+s.before)
 
 
         def stripFirstLine(string):
@@ -601,7 +601,7 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
                 r = r + l + '\n'
             return r
 
-        out = p.before
+        out = s.before
 #        ulgmodel.debug("BIRD OUT: "+out)
         outfile.write(stripFirstLine(out))
 

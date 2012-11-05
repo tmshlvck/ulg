@@ -41,6 +41,9 @@ STRING_LOGOUT_COMMAND = 'exit'
 BIRD_SOCK_HEADER_REGEXP='^([0-9]+)[-\s](.+)$'
 BIRD_SOCK_REPLY_END_REGEXP='^([0-9]+)\s*(\s.*)?$'
 
+BIRD_CONSOLE_PROMPT_REGEXP='[^>]+>\s*'
+
+
 BIRD_SHOW_PROTO_LINE_REGEXP='^\s*([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)(\s+([^\s].+)){0,1}\s*$'
 BIRD_SHOW_PROTO_HEADER_REGEXP='^\s*(name)\s+(proto)\s+(table)\s+(state)\s+(since)\s+(info)\s*$'
 
@@ -594,16 +597,16 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
                 raise Exception("pexpect session failed: Unknown error. last output: "+s.before)
 
 
-        def stripFirstLine(string):
+        def stripFirstLines(string):
             lines = str.splitlines(string)
-            r = ''
-            for l in lines[1:]:
+            r = re.sub(BIRD_CONSOLE_PROMPT_REGEXP,'',lines[2]) + '\n'
+            for l in lines[3:]:
                 r = r + l + '\n'
             return r
 
         out = s.before
 #        ulgmodel.debug("BIRD OUT: "+out)
-        outfile.write(stripFirstLine(out))
+        outfile.write(stripFirstLines(out))
 
     def rescanPeers(self):
         res = self.runRawSyncCommand(self.RESCAN_PEERS_COMMAND)

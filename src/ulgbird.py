@@ -593,6 +593,8 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
                 p+=1
             elif(i==2): # EOF -> process output
                 break
+            elif(i==3):
+                raise Exception("pexpect session timed out. last output: "+s.before)
             else:
                 raise Exception("pexpect session failed: Unknown error. last output: "+s.before)
 

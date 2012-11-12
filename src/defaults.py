@@ -23,7 +23,7 @@ refresh_interval = 5                             # interval of html refresh
 usage_limit = 1                                  # maximum concurrently processed requests
 range_step = 100                                 # number of table lines in the decorated output per page
 
-# Settings defaults
+# Default settings
 always_start_thread = True # True is highly recommended
 debug = True
 rescan_on_display = False
@@ -35,6 +35,7 @@ default_bird_sock = '/var/run/bird.ctl'
 default_bird_sock_timeout = 30
 default_bin_birdc = '/usr/sbin/birdc'
 bin_whois = '/usr/bin/whois'
+timeout = 180
 
 # Template dir relative to the index.py script
 template_dir = 'templates'

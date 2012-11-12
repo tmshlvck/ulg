@@ -570,7 +570,7 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
 
     def runRawCommand(self,command,outfile):
         c = '/bin/bash -c \'echo "'+command+'" | '+self.bin_ssh+' -p'+str(self.getPort())+' '+str(self.getUser())+'@'+self.getHost()+' '+self.bin_birdc+'\''
-        s=pexpect.spawn(c)
+        s=pexpect.spawn(c,timeout=defaults.timeout)
 
 #        s.logfile = open('/tmp/ulgbird.log', 'w')
 

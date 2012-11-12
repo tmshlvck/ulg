@@ -803,7 +803,8 @@ class CiscoRouter(ulgmodel.RemoteRouter):
 
     def runRawCommand(self,command,outfile):
         # connect
-        p=pexpect.spawn(defaults.bin_ssh+' -p'+str(self.getPort())+' '+str(self.getUser())+'@'+self.getHost())
+        c=defaults.bin_ssh+' -p'+str(self.getPort())+' '+str(self.getUser())+'@'+self.getHost()
+        p=pexpect.spawn(c,timeout=defaults.timeout)
 
         # handle ssh
         i=p.expect([STRING_EXPECT_SSH_NEWKEY,STRING_EXPECT_PASSWORD,pexpect.EOF])

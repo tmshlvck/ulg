@@ -510,10 +510,14 @@ class ULGCgi:
                     os.dup2(devnull.fileno(),sys.stderr.fileno())
 
                     # run the command
+                    ulgmodel.debug("Running in a forked process...")
                     commandThreadBody(session,self.decreaseUsage)
+                    ulgmodel.debug("Forked process finished...")
 
                     # exit the child
                     sys.exit(0)
+                else:
+                    ulgmodel.debug("Forked a new process PID: "+str(child_pid))
 
             else:
                 # directly run the selected action, DEPRECATED

@@ -42,6 +42,9 @@ import whois
 IPV4_ANNOTATE_REGEXP = '([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(/[0-9]{1,2})?)'
 ipv4_annotate_regexp = re.compile(IPV4_ANNOTATE_REGEXP)
 
+IPV6_ANNOTATE_REGEXP = '(([0-9a-fA-F]{1,4}:|:){2,7}([0-9a-fA-F]{1,4}|:)(/[0-9]{1,2})?)'
+ipv6_annotate_regexp = re.compile(IPV6_ANNOTATE_REGEXP)
+
 ### CGI output handler
 
 class Session(object):
@@ -329,7 +332,7 @@ class DecoratorHelper:
     def decoratePrefix(self,ip):
         return self.mwin(self.getWhoisURL(ip,'IP'),ip)
 
-    def annotatePrefixes(self,line):
+    def annotatePrefixes4(self,line):
         s=0
         r=''
         for m in ipv4_annotate_regexp.finditer(line):
@@ -338,7 +341,7 @@ class DecoratorHelper:
             s = m.end()
         return r + line[s:]
 
-    def annotateIPs(self,line):
+    def annotateIPs4(self,line):
         s=0
         r=''
         for m in ipv4_annotate_regexp.finditer(line):
@@ -346,7 +349,32 @@ class DecoratorHelper:
             r = r + self.decoratePrefix(line[m.start():m.end()])
             s = m.end()
         return r + line[s:]
-        
+
+    def annotatePrefixes6(self,line):
+        s=0
+        r=''
+        for m in ipv6_annotate_regexp.finditer(line):
+            r = r + line[s:m.start()]
+            r = r + self.decoratePrefix(line[m.start():m.end()])
+            s = m.end()
+        return r + line[s:]
+
+    def annotateIPs6(self,line):
+        s=0
+        r=''
+        for m in ipv6_annotate_regexp.finditer(line):
+            r = r + line[s:m.start()]
+            r = r + self.decoratePrefix(line[m.start():m.end()])
+            s = m.end()
+        return r + line[s:]
+
+    def annotatePrefixes(self,line):
+#        return self.annotatePrefixes4(line)
+        return self.annotatePrefixes6(self.annotatePrefixes4(line))
+
+    def annotateIPs(self,line):
+#        return self.annotateIPs4(line)
+        return self.annotateIPs6(self.annotatePrefixes4(line))
 
 
 class ULGCgi:

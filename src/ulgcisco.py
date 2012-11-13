@@ -189,11 +189,11 @@ def matchCiscoBGPLines(header,lines):
         result = []
 
         # when parsing table_line (not the header and not the continuation line)
-        # cut off first three charactes and use them as a group
+        # cut off first four charactes and use them as a group
         if(table_line and
-           (not re.match('^\s*$',line[0:3]))):
-            result.append([0,3])
-            line = '   '+line[3:]
+           (not re.match('^\s*$',line[0:4]))):
+            result.append([0,4])
+            line = '    '+line[4:]
 
         last_group = False
         for r in re.compile('[^\s]+').finditer(line):

@@ -31,6 +31,8 @@ import ulgmodel
 import ulggraph
 
 # module globals
+STRING_BGP_GRAPH='BGP graph'
+STRING_BGP_GRAPH_ERROR='Error: Can not produce image out of the received output.'
 STRING_EXPECT_SSH_NEWKEY='Are you sure you want to continue connecting'
 STRING_EXPECT_PASSWORD='(P|p)assword:'
 STRING_EXPECT_SHELL_PROMPT_REGEXP = '\n[a-zA-Z0-9\._-]+>'
@@ -600,7 +602,10 @@ class CiscoCommandGraphShowBgpIPv46Uni(ulgmodel.TextCommand):
 
     def decorateResult(self,session,decorator_helper=None):
         if(session.isFinished()):
-		return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),"BGP graph"),1)
+		if(session.getData() != None) and (session.getData() != []):
+			return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),STRING_BGP_GRAPH),1)
+		else:
+			return (STRING_BGP_GRAPH_ERROR, 1)
 	else:
 		return ('',0)
 
@@ -609,6 +614,7 @@ class CiscoCommandGraphShowBgpIPv46Uni(ulgmodel.TextCommand):
 
     def getSpecialContent(self,session,**params):
         paths = session.getData()
+	ulgmodel.debug("CISCO GRAPH: "+str(paths))
         print "Content-type: image/png\n"
         ulggraph.bgp_graph_gen(reduce_bgp_paths(paths),start=session.getRouter().getName(),
 			       end=session.getParameters()[0])

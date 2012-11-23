@@ -29,6 +29,9 @@ import defaults
 import ulgmodel
 import ulggraph
 
+STRING_BGP_GRAPH='BGP graph'
+STRING_BGP_GRAPH_ERROR='Error: Can not produce image out of the received output.'
+
 IPV46_SUBNET_REGEXP = '^[0-9a-fA-F:\.]+(/[0-9]{1,2}){0,1}$'
 RTNAME_REGEXP = '^[a-zA-Z0-9]+$'
 STRING_SYMBOL_ROUTING_TABLE = 'routing table'
@@ -357,7 +360,10 @@ class BirdGraphShowRouteAll(ulgmodel.TextCommand):
 
     def decorateResult(self,session,decorator_helper=None):
         if(session.isFinished()):
-            return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),"BGP graph"),1)
+            if(session.getData() != None) and (session.getData() != []):
+                return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),STRING_BGP_GRAPH),1)
+            else:
+                return (STRING_BGP_GRAPH_ERROR, 1)
         else:
             return ('',0)
 

@@ -4,7 +4,7 @@
   <head>
     <title>Universal Looking Glass</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style-horiz.css" />
     <py:if test="defined('refresh')">
       <meta http-equiv="refresh" content="$refresh" py:if="defined('refresh') and (refresh>0)" />
     </py:if>
@@ -145,16 +145,14 @@
 	<div id="paramsect"> <!-- TODO: change dynamic display -->
 	</div>
 
-
 </fieldset>
-<fieldset>
+<fieldset id="submit">
 <label>&nbsp;</label> 
               <input type="submit" value="Submit" />
 </fieldset>
 </div>
-
-
     </form>
+<div class="clear"></div>
     <py:choose>
       <py:when test="defined('result') or defined('refresh')">
 	<div id="result">

@@ -67,7 +67,7 @@ regex_sh_bgp_uni_recuse = re.compile(REGEX_SH_BGP_UNI_RECUSE)
 REGEX_SH_BGP_UNI_RECONLY = '\s*\(received-only\).*'
 regex_sh_bgp_uni_reconly = re.compile(REGEX_SH_BGP_UNI_RECONLY)
 
-REGEX_SH_BGP_UNI_TABLE_START = '\s*Advertised\s+to\s+update-groups.*'
+REGEX_SH_BGP_UNI_TABLE_START = '\s*Refresh\s+Epoch.*'
 regex_sh_bgp_uni_table_start = re.compile(REGEX_SH_BGP_UNI_TABLE_START)
 
 REGEX_SH_BGP_UNI_PEERLINE = '\s*([0-9a-fA-F:\.]+)\s.*from\s.*'
@@ -371,7 +371,7 @@ class CiscoCommandBgpIPv46Sum(ulgmodel.TextCommand):
             return [
                 (self._getPeerTableCell(decorator_helper,router,lrm.group(1)),color),
                 (lrm.group(2),color),
-                (decorator_helper.decorateASN(lrm.group(3)),color),
+                (decorator_helper.decorateASN(lrm.group(3),prefix=''),color),
                 (lrm.group(4),color),
                 (lrm.group(5),color),
                 (lrm.group(6),color),
@@ -478,19 +478,19 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
         for asnm in re.compile('[^\s]+').finditer(path):
             asn = asnm.group(0)
             if(asn.isdigit()):
-                result = result + ' ' + decorator_helper.decorateASN(asn)
+                result = result + ' ' + decorator_helper.decorateASN(asn,prefix='')
             else:
-                if(re.match('^\s*{[0-9,]+}\s*', asn)):
+                if(re.match('^\s*\{[0-9,]+\}\s*', asn)):
                     result = result + '{'
                     isnext = False
-                    for sasnm in re.compile('[0-9]+').finditer(asn):
+                    for sasnm in re.compile('([0-9]+)(,|\})').finditer(asn):
                         sasn = sasnm.group(0)
                         if(sasn.isdigit()):
                             if(isnext):
-                                result = result + ',' + decorator_helper.decorateASN(sasn)
+                                result = result + ',' + decorator_helper.decorateASN(sasn,prefix='')
                             else:
                                 isnext = True
-                                result = result + decorator_helper.decorateASN(sasn)
+                                result = result + decorator_helper.decorateASN(sasn,prefix='')
                     result = result + '}'
                 else:
                     result = result + ' ' +asn
@@ -642,9 +642,7 @@ class CiscoShowBgpIPv46Uni(ulgmodel.TextCommand):
 				r = m.group(1)
 				ases = str.split(m.group(2))
 				for asn in ases:
-					r = r + decorator_helper.decorateASN(asn,prefix='')
-					if(asn != ases[-1]):
-						r = r + ' '
+					r = r + ' ' + decorator_helper.decorateASN(asn,prefix='')
 				r = r + m.group(3)
 				return decorator_helper.annotateIPs(r)
 			else:
@@ -660,17 +658,13 @@ class CiscoShowBgpIPv46Uni(ulgmodel.TextCommand):
 
 		r=''
 		table_started=False
-		start_string=False
 		for sl in s[lbeg:lend]:
 			if(table_started):
 				r += decorateLine(sl) + "\n"
 			else:
 				r += sl + "\n"
-				if(start_string):
+				if(regex_sh_bgp_uni_table_start.match(sl)):
 					table_started = True
-				else:
-					if(regex_sh_bgp_uni_table_start.match(sl)):
-						start_string = True
 
 		return ("<pre>\n%s\n</pre>" % r, len(s))
 

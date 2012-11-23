@@ -327,6 +327,7 @@ class DecoratorHelper:
         return """<span style="cursor: pointer" onclick="TINY.box.show({iframe:'%s',boxid:'frameless',fixed:false,width:750,height:450,closejs:function(){closeJS()}})"><u>%s</u></span>""" % (url,label)
 
     def decorateASN(self,asn,prefix="AS"):
+        asn = re.sub('[Aa][Ss][Nn]?([0-9]+)','\\1',asn)
         return self.mwin(self.getWhoisURL('AS'+str(asn),'AS'),prefix+str(asn))
 
     def decoratePrefix(self,ip):

@@ -102,7 +102,6 @@ def cisco_parse_sh_bgp_uni(lines,prependas):
 
 	paths = []
 	table_started = False
-	start_string = False
 	for l in str.splitlines(lines):
 		if(table_started):
 			m = regex_sh_bgp_uni_asline.match(l)
@@ -124,11 +123,8 @@ def cisco_parse_sh_bgp_uni(lines,prependas):
 			if(m):
 				paths[-1][1]['recuse'] = True
 		else:
-			if(start_string):
+			if(regex_sh_bgp_uni_table_start.match(l)):
 				table_started = True
-			else:
-				if(regex_sh_bgp_uni_table_start.match(l)):
-					start_string = True
 
 	return paths
 

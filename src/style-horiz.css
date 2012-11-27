@@ -64,14 +64,15 @@ p {
 .form fieldset {
     border:0;
     margin:0;
-    padding:0 5px 5px;
+    padding:5px 5px;
     float:left;    
 }
 
 .form fieldset#submit {
-    right:50px;
-    position:absolute;
     border:0;
+    clear: both;
+    float: right;
+    margin: -66px 15px 0 0;
 }
  
 .form select#commandselect {
@@ -230,6 +231,29 @@ p {
     height: 100%;
     margin: 0 auto -41px; /* the bottom margin is the negative value of the footer's height */
 }
+
+
+@media all and (min-width: 30em) {
+  #wrapper {
+    font-size: 75%;
+    line-height: 1;
+  }
+}
+
+@media all and (min-width: 40em) {
+  #wrapper {
+    font-size: 90%;
+    line-height: 1.5;
+  }
+}
+
+@media all and (min-width: 60em) {
+   #wrapper {
+    font-size: 110%;
+    line-height: 1.8;
+}
+
+
 
 .push {
     height:40px;

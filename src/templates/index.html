@@ -5,6 +5,11 @@
     <title>Universal Looking Glass</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <link rel="stylesheet" href="style-horiz.css" />
+
+<script type="text/javascript">var NREUMQ=NREUMQ||[];NREUMQ.push(["mark","firstbyte",new Date().getTime()]);</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+
     <py:if test="defined('refresh')">
       <meta http-equiv="refresh" content="$refresh" py:if="defined('refresh') and (refresh>0)" />
     </py:if>
@@ -21,12 +26,13 @@
 
             document.getElementById("paramsect").innerHTML='                                                                            \
             <py:for each="pidx,param in enumerate(routers[ridx].listCommands()[cidx].getParamSpecs())">
-		<label for="param${pidx}">                                                                                           \
+	        <fieldset>                                                                                                              \
+		<label for="param${pidx}">                                                                                              \
 		  ${pidx+3}. ${param.getName()}:                                                                                        \
-		</label>                                                                                                                   \
+		</label>                                                                                                                \
 		<py:choose>
 		  <py:when test="param.getType() == 'select'">
-		      <select name="param${pidx}" id="param${pidx}">                                                                   \
+		      <select name="param${pidx}" id="param${pidx}">                                                                    \
 			<py:for each="paridx,partuple in enumerate(param.getOptions())">
 			  <py:choose>
 			    <py:when test="default_routerid == ridx and default_commandid == cidx and defined('default_params') and partuple[0] == default_params[pidx]">
@@ -59,6 +65,7 @@
 		      </py:choose>
 		  </py:otherwise>
 		</py:choose>
+                </fieldset>                                                                                                             \
 	    </py:for>';
 	    }
 	</py:for>

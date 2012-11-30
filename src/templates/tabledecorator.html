@@ -9,15 +9,26 @@
     <table border="1">
       <tr>
 	<py:for each="thidx,th in enumerate(table_header)">
-	  <th>${th}</th>
+	  <th class="col${thidx}">${th}</th>
 	</py:for>
       </tr>
       <py:for each="tridx,tr in enumerate(table)">
-	<tr>
-	  <py:for each="tdidx,td in enumerate(tr)">
-	    <td class="${td[1]}">${td[0]}</td>
-	  </py:for>
-	</tr>
+        <py:choose>
+	  <py:when test="(tridx % 2) == 1">
+	    <tr class="even">
+	      <py:for each="tdidx,td in enumerate(tr)">
+		<td class="col${tdidx} ${td[1]}">${td[0]}</td>
+	      </py:for>
+	    </tr>
+	  </py:when>
+	  <py:otherwise>
+	    <tr class="odd">
+	      <py:for each="tdidx,td in enumerate(tr)">
+		<td class="col${tdidx} ${td[1]}">${td[0]}</td>
+	      </py:for>
+	     </tr>
+	  </py:otherwise>
+	</py:choose>
       </py:for>
     </table>
   </py:if>

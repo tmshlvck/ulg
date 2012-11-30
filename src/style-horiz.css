@@ -26,6 +26,7 @@ body {
     padding:0;
     font-family:Helvetica, Arial, SansSerif;
     font-size:1.1em;
+    border:10px solid white;
 }
 
 #header {
@@ -62,17 +63,20 @@ p {
     }
     
 .form fieldset {
-    border:0;
+    border:pink;
     margin:0;
     padding:5px 5px;
     float:left;    
 }
 
+
+.form div#paramsect {
+    clear:both;
+}
+
+
+
 .form fieldset#submit {
-    border:0;
-    clear: both;
-    float: right;
-    margin: -66px 15px 0 0;
 }
  
 .form select#commandselect {
@@ -126,16 +130,19 @@ p {
     padding: 1px 5px;
     border:0;
 }
+
+/* example of icons in sellectors. (changes the size of the field) */
+
 .form select#routerselect option[value="2"]:before {
-    content: url("http://icons.iconarchive.com/icons/jeanette-foshee/simpsons-08/16/Marge-O-Rama-Officer-Marge-Simpson-2-icon.png");
+//    content: url("http://icons.iconarchive.com/icons/jeanette-foshee/simpsons-08/16/Marge-O-Rama-Officer-Marge-Simpson-2-icon.png");
 } 
 
 .form select#routerselect option[value="1"]:before {
-    content: url("http://icons.iconarchive.com/icons/jeanette-foshee/simpsons-02/16/Folder-Homer-icon.png");
+//    content: url("http://icons.iconarchive.com/icons/jeanette-foshee/simpsons-02/16/Folder-Homer-icon.png");
 }
 
 .form select#routerselect option[value="0"]:before {
-    content: url("http://icons.iconarchive.com/icons/jeanette-foshee/simpsons-09/16/Lisas-Wedding-Older-Marge-icon.png")
+//    content: url("http://icons.iconarchive.com/icons/jeanette-foshee/simpsons-09/16/Lisas-Wedding-Older-Marge-icon.png")
 }
 
 .form br
@@ -161,32 +168,44 @@ p {
     border:1px solid #FDDD99;
     background: #FFFFDD;
     font-size:0.9em;
+    font-family:monospace;
+    overflow: auto;
+    overflow-x: auto; /* Use horizontal scroller if needed; for Firefox 2, not */
+    white-space: pre-wrap; /* css-3 */
 }
 
 #result table {
     border-collapse:collapse;
-    border-left:1px solid #333;
-    border-right:1px solid #333;
-    border-bottom:1px solid #333;
+    border-left:1px solid #FDDD99;
+    border-right:1px solid #FDDD99;
+    border-bottom:1px solid #FDDD99;
     background: #FFFFDD;
 }
 
 #result table {
-    border-top:1px solid #333;
+    border-top:1px solid #FDDD99;
+    width:100%;
+    min-width:140px;
 }
 
 #result table tr th {
     background-color:#CACACA;
     font-weight:bold;
     padding:5px 12px 5px 12px;
+    border:1px solid #FDDD99;
+    font-size:0.7em;
 }
 
 #result table tr td {
     padding:4px 12px 4px 12px;
     border:0;
-    font-size:0.9em;
+    font-size:0.7em;
+    background: #FFFFDD;
 }
 
+#result table tr td.odd {
+    background: #FFFFCC;
+}
 /*
     WHITE = 'FFFFFF'
     RED = 'FF0000'
@@ -197,7 +216,7 @@ p {
 */
 
 #result table tr td.white {
-    background-color:#FFF;    
+/*    background-color:#FFF;     */
 }
 
 #result table tr td.red {
@@ -230,27 +249,57 @@ p {
     height: auto !important;
     height: 100%;
     margin: 0 auto -41px; /* the bottom margin is the negative value of the footer's height */
+    font-size: 75%;    
 }
 
 
-@media all and (min-width: 30em) {
-  #wrapper {
-    font-size: 75%;
-    line-height: 1;
+/* responsive design */
+
+@media all and (min-width: 640px) {
+    #result table tr td, #result table tr th {
+	font-size:0.9em;
+    }
+  body {
+      border:10px solid pink;
   }
 }
 
-@media all and (min-width: 40em) {
+@media all and (min-width: 750px) {
+  body {
+      border:10px solid green;
+  }
+  .form div#paramsect {
+      clear:none;
+  }
+  #result pre {
+      font-size:1em;
+  }
+}
+
+@media all and (min-width: 1190px) {
   #wrapper {
     font-size: 90%;
     line-height: 1.5;
   }
+  body {
+      border:10px solid blue;
+  }
+  .form div#paramsect {
+      clear:none;
+  }
 }
 
-@media all and (min-width: 60em) {
+@media all and (min-width: 1420px) {
    #wrapper {
     font-size: 110%;
     line-height: 1.8;
+    }
+  body {
+      border:10px solid red;
+  }
+  .form div#paramsect {
+      clear:none;
+  }
 }
 
 

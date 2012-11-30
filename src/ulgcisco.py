@@ -614,7 +614,6 @@ class CiscoCommandGraphShowBgpIPv46Uni(ulgmodel.TextCommand):
 
     def getSpecialContent(self,session,**params):
         paths = session.getData()
-	ulgmodel.debug("CISCO GRAPH: "+str(paths))
         print "Content-type: image/png\n"
         ulggraph.bgp_graph_gen(reduce_bgp_paths(paths),start=session.getRouter().getName(),
 			       end=session.getParameters()[0])

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # ULG - Universal Looking Glass
-# by CZ.NIC Labs (c) 2012
+# (C) 2012 CZ.NIC, z.s.p.o.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

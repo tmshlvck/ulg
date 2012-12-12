@@ -47,10 +47,6 @@ BGP_PREFIX_TABLE_HEADER='^(\s)\s+(Network)\s+(Next Hop)\s+(Metric)\s+(LocPrf)\s+
 RESCAN_BGP_IPv4_COMMAND='show bgp ipv4 unicast summary'
 RESCAN_BGP_IPv6_COMMAND='show bgp ipv6 unicast summary'
 
-IPV4_SUBNET_REGEXP = '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(/[0-9]{1,2}){0,1}$'
-IPV4_ADDRESS_REGEXP = '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'
-IPV6_SUBNET_REGEXP = '^[0-9a-fA-F:]+(/[0-9]{1,2}){0,1}$'
-IPV6_ADDRESS_REGEXP = '^[0-9a-fA-F:]+$'
 MAC_ADDRESS_REGEXP = '^[0-9a-fA-F]{4}\.[0-9a-fA-F]{4}\.[0-9a-fA-F]{4}$'
 
 BGP_RED_STATES = ['Idle', 'Active', '(NoNeg)']
@@ -592,12 +588,11 @@ class CiscoCommandShowBgpIPv6NeighRecv(CiscoCommandShowBgpIPv46Select):
 
 class CiscoCommandGraphShowBgpIPv46Uni(ulgmodel.TextCommand):
     TABLE_HEADER_REGEXP=BGP_PREFIX_TABLE_HEADER
-    PARAM_REGEXP = '.*'
 
-    def __init__(self,peers,name=None):
-        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[
-                ulgmodel.TextParameter(self.PARAM_REGEXP,name=defaults.STRING_IPSUBNET)],
-                name=name)
+    def __init__(self,peers,name=None,param=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,
+				      param_specs=[param],
+				      name=name)
 
     def decorateResult(self,session,decorator_helper=None):
         if(session.isFinished()):
@@ -623,17 +618,24 @@ class CiscoCommandGraphShowBgpIPv46Uni(ulgmodel.TextCommand):
 
 class CiscoCommandGraphShowBgpIPv4Uni(CiscoCommandGraphShowBgpIPv46Uni):
     COMMAND_TEXT='show bgp ipv4 unicast %s'
-    PARAM_REGEXP = IPV4_SUBNET_REGEXP
+
+    def __init__(self,peers,name=None):
+        CiscoCommandGraphShowBgpIPv46Uni.__init__(self,peers,name,
+						  param=ulgmodel.IPv4SubnetParameter())
+
 
 class CiscoCommandGraphShowBgpIPv6Uni(CiscoCommandGraphShowBgpIPv46Uni):
     COMMAND_TEXT='show bgp ipv6 unicast %s'
-    PARAM_REGEXP = IPV6_SUBNET_REGEXP
+
+    def __init__(self,peers,name=None):
+        CiscoCommandGraphShowBgpIPv46Uni.__init__(self,peers,name,
+						  param=ulgmodel.IPv6SubnetParameter())
+
+
 
 class CiscoShowBgpIPv46Uni(ulgmodel.TextCommand):
-	def __init__(self):
-		ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,
-					      [ulgmodel.TextParameter(self.PARAM_REGEXP,
-								      name=defaults.STRING_IPSUBNET)]),
+	def __init__(self,param):
+		ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,[param]),
 
 	def decorateResult(self,session,decorator_helper=None):
 		def decorateLine(l):			
@@ -671,11 +673,17 @@ class CiscoShowBgpIPv46Uni(ulgmodel.TextCommand):
 
 class CiscoShowBgpIPv4Uni(CiscoShowBgpIPv46Uni):
 	COMMAND_TEXT = 'show bgp ipv4 unicast %s'
-	PARAM_REGEXP = IPV4_SUBNET_REGEXP
+
+	def __init__(self,name=None):
+		CiscoShowBgpIPv46Uni.__init__(self,param=ulgmodel.IPv4SubnetParameter())
+
 
 class CiscoShowBgpIPv6Uni(CiscoShowBgpIPv46Uni):
 	COMMAND_TEXT = 'show bgp ipv6 unicast %s'
-	PARAM_REGEXP = IPV6_SUBNET_REGEXP
+
+	def __init__(self,name=None):
+		CiscoShowBgpIPv46Uni.__init__(self,param=ulgmodel.IPv6SubnetParameter())
+
 
 class CiscoRouter(ulgmodel.RemoteRouter):
     PS_KEY_BGPV4 = '-bgpipv4'
@@ -707,8 +715,8 @@ class CiscoRouter(ulgmodel.RemoteRouter):
                 _show_bgp_ipv6_uni_neigh_advertised,
                 CiscoShowBgpIPv4Uni(),
 		CiscoShowBgpIPv6Uni(),
-                ulgmodel.TextCommand('show ip route %s',[ulgmodel.TextParameter(IPV4_ADDRESS_REGEXP,name=defaults.STRING_IPADDRESS)]),
-                ulgmodel.TextCommand('show ipv6 unicast route %s',[ulgmodel.TextParameter(IPV6_ADDRESS_REGEXP,name=defaults.STRING_IPADDRESS)]),
+                ulgmodel.TextCommand('show ip route %s',[ulgmodel.IPv4AddressParameter()]),
+                ulgmodel.TextCommand('show ipv6 unicast route %s',[ulgmodel.IPv6AddressParameter()]),
                 ulgmodel.TextCommand('show ip arp %s',[ulgmodel.TextParameter('.*',name=defaults.STRING_NONEORINTORIPADDRESS)]),
                 ulgmodel.TextCommand('show ipv6 neighbors %s',[ulgmodel.TextParameter('.*',name=defaults.STRING_NONEORINTORIPADDRESS)]),
                 ulgmodel.TextCommand('show mac-address-table address %s',[ulgmodel.TextParameter(MAC_ADDRESS_REGEXP,name=defaults.STRING_MACADDRESS)]),

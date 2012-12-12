@@ -26,11 +26,16 @@ from genshi.core import Markup
 import pickle
 import fcntl
 import StringIO
+import socket
 
 import whois
 import defaults
 
 
+IPV4_SUBNET_REGEXP = '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(/[0-9]{1,2}){0,1}$'
+IPV4_ADDRESS_REGEXP = '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'
+IPV6_SUBNET_REGEXP = '^[0-9a-fA-F:]+(/[0-9]{1,2}){0,1}$'
+IPV6_ADDRESS_REGEXP = '^[0-9a-fA-F:]+$'
 
 def log(*messages):
     try:
@@ -152,6 +157,69 @@ class TextParameter(object):
             return input
         else:
             raise Exception("Invalid input encountered: Check did not passed.")
+
+class AddressParameter(TextParameter):
+    def __init__(self,pattern=None,name=defaults.STRING_IPADDRESS,default=''):
+        TextParameter.__init__(self,pattern,name,default)
+
+    def _resolveAddress(self,input):
+        try:
+            return(socket.getaddrinfo(input,80,self.addrfam,0,socket.SOL_TCP)[0][4][0])
+        except Exception as e:
+            return None
+
+    def checkInput(self,input):
+        if(re.compile(self.pattern).match(input)):
+            return True
+
+        if(self._resolveAddress(input)):
+            return True
+        else:
+            return False
+
+    def normalizeInput(self,input):
+        if(re.compile(self.pattern).match(input)):
+            return input
+
+        res = self._resolveAddress(input)
+        if(res):
+            return res
+        else:
+            return input
+
+class IPv4SubnetParameter(AddressParameter):
+    def __init__(self,name=defaults.STRING_IPSUBNET,default=''):
+        AddressParameter.__init__(self,IPV4_SUBNET_REGEXP,name,default)
+        self.addrfam=socket.AF_INET
+
+    def _resolveAddress(self,input):
+        addr = AddressParameter._resolveAddress(self,input)
+        if(addr):
+            return (addr + '/32')
+        else:
+            return None
+
+class IPv4AddressParameter(AddressParameter):
+    def __init__(self,name=defaults.STRING_IPADDRESS,default=''):
+        AddressParameter.__init__(self,IPV4_ADDRESS_REGEXP,name,default)
+        self.addrfam=socket.AF_INET
+
+class IPv6SubnetParameter(AddressParameter):
+    def __init__(self,name=defaults.STRING_IPSUBNET,default=''):
+        AddressParameter.__init__(self,IPV6_SUBNET_REGEXP,name,default)
+        self.addrfam=socket.AF_INET6
+
+    def _resolveAddress(self,input):
+        addr = AddressParameter._resolveAddress(self,input)
+        if(addr):
+            return (addr + '/128')
+        else:
+            return None
+
+class IPv6AddressParameter(AddressParameter):
+    def __init__(self,name=defaults.STRING_IPADDRESS,default=''):
+        AddressParameter.__init__(self,IPV6_ADDRESS_REGEXP,name,default)
+        self.addrfam=socket.AF_INET6
 
 
 class SelectionParameter(TextParameter):

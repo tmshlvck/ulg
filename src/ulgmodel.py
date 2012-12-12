@@ -195,7 +195,7 @@ class IPv4SubnetParameter(AddressParameter):
     def _resolveAddress(self,input):
         addr = AddressParameter._resolveAddress(self,input)
         if(addr):
-            return (addr + '/32')
+            return (addr)
         else:
             return None
 
@@ -212,7 +212,7 @@ class IPv6SubnetParameter(AddressParameter):
     def _resolveAddress(self,input):
         addr = AddressParameter._resolveAddress(self,input)
         if(addr):
-            return (addr + '/128')
+            return (addr)
         else:
             return None
 
@@ -391,16 +391,25 @@ class Router(object):
 
         if(c == None):
             log("Bad params encountered in command "+str(command.getName())+" : "+str(parameters))
-            return self.returnError(defaults.STRING_BAD_PARAMS)
+            return None
 
         debug("Going to run command "+c+" on router "+self.getName())
         return c
 
     def runSyncCommand(self,command,parameters):
-        return self.runRawSyncCommand(self.__prepareCommand(command,parameters))
+        c = self.__prepareCommand(command,parameters)
+        if(c):
+            return self.runRawSyncCommand(c)
+        else:
+            return self.returnError(defaults.STRING_BAD_PARAMS)
 
     def runAsyncCommand(self,command,parameters,outfile):
-        return self.runRawCommand(self.__prepareCommand(command,parameters),outfile)
+        c = self.__prepareCommand(command,parameters)
+        if(c):
+            return self.runRawCommand(c,outfile)
+        else:
+            outfile.write(self.returnError(defaults.STRING_BAD_PARAMS))
+            return
 
     def runRawSyncCommand(self,command):
         cr = StringIO.StringIO()

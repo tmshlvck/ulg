@@ -612,7 +612,7 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
             return r
 
         out = s.before
-        ulgmodel.debug("BIRD OUT: "+out)
+#        ulgmodel.debug("BIRD OUT: "+out)
         outfile.write(stripFirstLines(out))
 
     def rescanPeers(self):

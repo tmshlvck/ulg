@@ -606,13 +606,13 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
 
         def stripFirstLines(string):
             lines = str.splitlines(string)
-            r = re.sub(BIRD_CONSOLE_PROMPT_REGEXP,'',lines[2]) + '\n'
-            for l in lines[3:]:
-                r = r + l + '\n'
+            r = ''
+            for l in lines[2:]:
+                r = r + re.sub(BIRD_CONSOLE_PROMPT_REGEXP,'',l) + '\n'
             return r
 
         out = s.before
-#        ulgmodel.debug("BIRD OUT: "+out)
+        ulgmodel.debug("BIRD OUT: "+out)
         outfile.write(stripFirstLines(out))
 
     def rescanPeers(self):

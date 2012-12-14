@@ -378,7 +378,7 @@ class BirdGraphShowRouteAll(ulgmodel.TextCommand):
 class BirdRouter(ulgmodel.Router):
     RESCAN_PEERS_COMMAND = 'show protocols'
     RESCAN_TABLES_COMMAND = 'show symbols'
-    DEFAULT_PROTOCOL_FLTR = '^(Kernel|Device|Static|BGP).*$'
+    DEFAULT_PROTOCOL_FLTR = '^BGP.*$'
 
     def _getDefaultCommands(self):
         sh_proto_all = BirdShowProtocolsAllCommand(self.getBGPPeers())

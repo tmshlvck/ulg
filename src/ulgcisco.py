@@ -64,7 +64,7 @@ regex_sh_bgp_uni_recuse = re.compile(REGEX_SH_BGP_UNI_RECUSE)
 REGEX_SH_BGP_UNI_RECONLY = '\s*\(received-only\).*'
 regex_sh_bgp_uni_reconly = re.compile(REGEX_SH_BGP_UNI_RECONLY)
 
-REGEX_SH_BGP_UNI_TABLE_START = '\s*Refresh\s+Epoch.*'
+REGEX_SH_BGP_UNI_TABLE_START = '\s*Advertised\s+to\s+update-groups.*'
 regex_sh_bgp_uni_table_start = re.compile(REGEX_SH_BGP_UNI_TABLE_START)
 
 REGEX_SH_BGP_UNI_PEERLINE = '\s*([0-9a-fA-F:\.]+)\s.*from\s.*'
@@ -98,8 +98,10 @@ def cisco_parse_sh_bgp_uni(lines,prependas):
 		return res
 
 	paths = []
+	table_prestarted = False
 	table_started = False
 	for l in str.splitlines(lines):
+		ulgmodel.debug("DEBUG CISCO PARSE LINE:"+str(l))
 		if(table_started):
 			m = regex_sh_bgp_uni_asline.match(l)
 			if(m):
@@ -120,8 +122,10 @@ def cisco_parse_sh_bgp_uni(lines,prependas):
 			if(m):
 				paths[-1][1]['recuse'] = True
 		else:
-			if(regex_sh_bgp_uni_table_start.match(l)):
+			if(table_prestarted):
 				table_started = True
+			if(regex_sh_bgp_uni_table_start.match(l)):
+				table_prestarted = True
 
 	return paths
 
@@ -660,13 +664,16 @@ class CiscoShowBgpIPv46Uni(ulgmodel.TextCommand):
 
 		r=''
 		table_started=False
+		table_prestarted = False
 		for sl in s[lbeg:lend]:
 			if(table_started):
 				r += decorateLine(sl) + "\n"
 			else:
 				r += sl + "\n"
-				if(regex_sh_bgp_uni_table_start.match(sl)):
+				if(table_prestarted):
 					table_started = True
+				if(regex_sh_bgp_uni_table_start.match(sl)):
+					table_prestarted = True
 
 		return ("<pre>\n%s\n</pre>" % r, len(s))
 
@@ -804,53 +811,62 @@ class CiscoRouter(ulgmodel.RemoteRouter):
             self.rescanHook()
 
     def runRawCommand(self,command,outfile):
-        # connect
+        skiplines=1
+
+	# connect
         c=defaults.bin_ssh+' -p'+str(self.getPort())+' '+str(self.getUser())+'@'+self.getHost()
-        p=pexpect.spawn(c,timeout=defaults.timeout)
+        s=pexpect.spawn(c,timeout=defaults.timeout)
+	s.logfile = open('/tmp/ulgcisco.log', 'w')
 
+	y=0
+	p=0
         # handle ssh
-        i=p.expect([STRING_EXPECT_SSH_NEWKEY,STRING_EXPECT_PASSWORD,pexpect.EOF])
-        if(i==0):
-            p.sendline('yes')
-            i=p.expect([STRING_EXPECT_SSH_NEWKEY,STRING_EXPECT_PASSWORD,pexpect.EOF])
+	while True:
+		i=s.expect([STRING_EXPECT_SSH_NEWKEY,STRING_EXPECT_PASSWORD,
+			    STRING_EXPECT_SHELL_PROMPT_REGEXP,pexpect.EOF,pexpect.TIMEOUT])
+		if(i==0):
+			if(y>1):
+				raise Exception("pexpect session failed: Can not save SSH key.")
 
-        if(i==0):
-            raise Exception("pexpect session failed: Can not save SSH key.")
-        elif(i==1):
-            p.sendline(self.password)
-        elif(i==2):
-            raise Exception("pexpect session failed: Connection timeout or SSH error.")
-        else:
-            raise Exception("pexpect session failed: SSH error.")
+			s.sendline('yes')
+			y+=1
 
-        # check shell and preset terminal
-        i=p.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,pexpect.EOF])
-        if(i==0):
-            p.sendline('terminal length 0')
-        else:
-            raise Exception("pexpect session failed: Missing shell prompt.")
+		elif(i==1):
+			if(p>1):
+				raise Exception("pexpect session failed: Password not accepted.")
 
-        i=p.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,pexpect.EOF])
-        if(i==0):
-            p.sendline('terminal width 0')
-        else:
-            raise Exception("pexpect session failed: Missing shell prompt.")
+			s.sendline(self.password)
+			p+=1
+		elif(i==2): # prompt
+			break
+		elif(i==3):
+			raise Exception("pexpect session failed: Remote server disconnected.")
+		elif(i==4):
+			raise Exception("pexpect session failed: Connection timeout.")
+		else:
+			raise Exception("pexpect session failed: Unknown error. last output: "+s.before)
 
-        i=p.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,pexpect.EOF])
-        if(i==0):
-            p.sendline(command)
-        else:
-            raise Exception("pexpect session failed: Missing shell prompt.")
-        
-        p.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,pexpect.EOF])
+	s.sendline('terminal length 0')
+	s.expect(['\n',pexpect.EOF,pexpect.TIMEOUT])
 
-        def stripFirstLine(string):
-            lines = str.splitlines(string)
-            r = ''
-            for l in lines[1:]:
-                r = r + l + '\n'
-            return r
+	s.sendline('terminal width 0')
+	s.expect(['\n',pexpect.EOF,pexpect.TIMEOUT])
 
-        outfile.write(stripFirstLine(p.before))
-
-	p.sendline(STRING_COMMAND_LOGOUT)
+	l=0
+	s.sendline(command)
+	while True:
+		i=s.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,'\n',pexpect.EOF,pexpect.TIMEOUT])
+		if(i==0): # prompt
+			s.sendline(STRING_COMMAND_LOGOUT)
+			s.expect(['\n',pexpect.EOF,pexpect.TIMEOUT])
+			break
+		elif(i==1): # anything to capture
+			if(l>=skiplines):
+				outfile.write(s.before + "\n")
+			l+=1
+		elif(i==2):
+			raise Exception("pexpect session failed: Remote server disconnected.")
+		elif(i==3):
+			raise Exception("pexpect session failed: Connection timeout.")
+		else:
+			raise Exception("pexpect session failed: Unknown error. last output: "+s.before)

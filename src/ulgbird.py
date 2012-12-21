@@ -38,6 +38,7 @@ STRING_SYMBOL_ROUTING_TABLE = 'routing table'
 STRING_EXPECT_SSH_NEWKEY='Are you sure you want to continue connecting'
 STRING_EXPECT_PASSWORD='(P|p)assword:'
 STRING_EXPECT_SHELL_PROMPT_REGEXP = '\n[a-zA-Z0-9\._-]+>'
+STRING_EXPECT_REPLY_START = 'BIRD\s+[^\s]+\s+ready\.'
 STRING_LOGOUT_COMMAND = 'exit'
 
 BIRD_SOCK_HEADER_REGEXP='^([0-9]+)[-\s](.+)$'
@@ -575,6 +576,7 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
 
     def runRawCommand(self,command,outfile):
         c = '/bin/bash -c \'echo "'+command+'" | '+self.bin_ssh+' -p'+str(self.getPort())+' '+str(self.getUser())+'@'+self.getHost()+' '+self.bin_birdc+'\''
+        skiplines = 2
         s=pexpect.spawn(c,timeout=defaults.timeout)
 
 #        s.logfile = open('/tmp/ulgbird.log', 'w')
@@ -582,8 +584,10 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
         # handle ssh
         y=0
         p=0
+        l=0
+        capture=False
         while True:
-            i=s.expect([STRING_EXPECT_SSH_NEWKEY,STRING_EXPECT_PASSWORD,pexpect.EOF,pexpect.TIMEOUT])
+            i=s.expect([STRING_EXPECT_SSH_NEWKEY,STRING_EXPECT_PASSWORD,STRING_EXPECT_REPLY_START,'\n',pexpect.EOF,pexpect.TIMEOUT])
             if(i==0):
                 if(y>1):
                     raise Exception("pexpect session failed: Can not save SSH key.")
@@ -596,24 +600,20 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
 
                 s.sendline(self.password)
                 p+=1
-            elif(i==2): # EOF -> process output
-                break
+            elif(i==2):
+                capture=True
             elif(i==3):
+                if(capture):
+                    if(l>=skiplines):
+                        outfile.write(re.sub(BIRD_CONSOLE_PROMPT_REGEXP,'',s.before))
+                    l+=1
+            elif(i==4): # EOF -> process output
+                break
+            elif(i==5):
                 raise Exception("pexpect session timed out. last output: "+s.before)
             else:
                 raise Exception("pexpect session failed: Unknown error. last output: "+s.before)
 
-
-        def stripFirstLines(string):
-            lines = str.splitlines(string)
-            r = ''
-            for l in lines[2:]:
-                r = r + re.sub(BIRD_CONSOLE_PROMPT_REGEXP,'',l) + '\n'
-            return r
-
-        out = s.before
-#        ulgmodel.debug("BIRD OUT: "+out)
-        outfile.write(stripFirstLines(out))
 
     def rescanPeers(self):
         res = self.runRawSyncCommand(self.RESCAN_PEERS_COMMAND)

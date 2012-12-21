@@ -101,7 +101,6 @@ def cisco_parse_sh_bgp_uni(lines,prependas):
 	table_prestarted = False
 	table_started = False
 	for l in str.splitlines(lines):
-		ulgmodel.debug("DEBUG CISCO PARSE LINE:"+str(l))
 		if(table_started):
 			m = regex_sh_bgp_uni_asline.match(l)
 			if(m):

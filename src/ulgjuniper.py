@@ -135,10 +135,10 @@ class JuniperRouterRemoteTelnet(JuniperRouter):
 
                 s.sendline(self.password)
                 p+=1
-            elif(i==2):
+            elif(i==2): # shell
                 break
             elif(i==3): # EOF -> process output
-                break
+                raise Exception("pexpect session failed to authenticate, remote server disconnected.")
             elif(i==4):
                 raise Exception("pexpect session timed out. last output: "+s.before)
             else:

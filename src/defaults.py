@@ -44,6 +44,7 @@ table_decorator_template_file = 'tabledecorator.html'
 
 # Paths to external programs
 bin_ssh = '/usr/bin/ssh'
+bin_telnet = '/usr/bin/telnet'
 
 # Output (localized) strings
 STRING_ANY='any'

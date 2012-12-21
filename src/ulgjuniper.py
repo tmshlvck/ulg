@@ -33,20 +33,17 @@ STRING_BGP_GRAPH_ERROR='Error: Can not produce image out of the received output.
 
 IPV46_SUBNET_REGEXP = '^[0-9a-fA-F:\.]+(/[0-9]{1,2}){0,1}$'
 RTNAME_REGEXP = '^[a-zA-Z0-9]+$'
-STRING_SYMBOL_ROUTING_TABLE = 'routing table'
 
 STRING_EXPECT_SSH_NEWKEY='Are you sure you want to continue connecting'
 STRING_EXPECT_LOGIN='login:'
 STRING_EXPECT_PASSWORD='(P|p)assword:'
 STRING_EXPECT_SHELL_PROMPT_REGEXP = '\n[a-zA-Z0-9\._@-]+>'
 STRING_LOGOUT_COMMAND = 'exit'
-
+STRING_CLI_ININITE_COMMAND = 'set cli screen-length 0'
 
 # ABSTRACT
 class JuniperRouter(ulgmodel.RemoteRouter):
-    RESCAN_PEERS_COMMAND = 'show protocols'
-    RESCAN_TABLES_COMMAND = 'show symbols'
-    DEFAULT_PROTOCOL_FLTR = '^(Kernel|Device|Static|BGP).*$'
+    RESCAN_PEERS_COMMAND = 'show bgp summary'
 
     PS_KEY_BGP = '-bgppeers'
 
@@ -80,6 +77,7 @@ class JuniperRouter(ulgmodel.RemoteRouter):
 
     def _getDefaultCommands(self):
         return [ulgmodel.TextCommand('show version'),
+                ulgmodel.TextCommand('show bgp summary'),
                 ]
 
     def rescanPeers(self):
@@ -123,7 +121,7 @@ class JuniperRouterRemoteTelnet(JuniperRouter):
         c = defaults.bin_telnet+' '+self.getHost()+' '+str(self.getPort())
         s=pexpect.spawn(c,timeout=defaults.timeout)
 
-        s.logfile = open('/tmp/ulgjuni.log', 'w')
+        # s.logfile = open('/tmp/ulgjuni.log', 'w')
 
         p=0
         while True:
@@ -146,12 +144,24 @@ class JuniperRouterRemoteTelnet(JuniperRouter):
             else:
                 raise Exception("pexpect session failed: Unknown error. last output: "+s.before)
 
+        s.sendline(STRING_CLI_ININITE_COMMAND)
+        while True:
+            i=s.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,'\n',pexpect.EOF,pexpect.TIMEOUT])
+            if(i==0): # shell prompt -> proceed
+                break
+            if(i==1):
+                pass # anything else -> ignore
+            elif(i==2 or i==3):
+                raise Exception("pexpect session timed out. last output: "+s.before)
+            else:
+                raise Exception("pexpect session failed: Unknown error. last output: "+s.before)
+
         s.sendline(command)
         capture=True
         line=0
         while True:
             i=s.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,'\n',pexpect.EOF,pexpect.TIMEOUT])
-            if(i==0):
+            if(i==0): # shell prompt -> logout
                 capture=False
                 s.sendline(STRING_LOGOUT_COMMAND)
             elif(i==1):
@@ -164,6 +174,8 @@ class JuniperRouterRemoteTelnet(JuniperRouter):
                 raise Exception("pexpect session timed out. last output: "+s.before)
             else:
                 raise Exception("pexpect session failed: Unknown error. last output: "+s.before)
+
+        s.expect([pexpect.EOF,pexpect.TIMEOUT])
 
 
 class JuniperRouterRemoteSSH(JuniperRouter):

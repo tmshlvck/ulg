@@ -167,7 +167,7 @@ class JuniperRouterRemoteTelnet(JuniperRouter):
             elif(i==1):
                 if(capture and line >= skiplines):
                     outfile.write(s.before + "\n")
-                line=line+1
+                line+=1
             elif(i==2): # EOF -> process output
                 break
             elif(i==3):
@@ -175,7 +175,7 @@ class JuniperRouterRemoteTelnet(JuniperRouter):
             else:
                 raise Exception("pexpect session failed: Unknown error. last output: "+s.before)
 
-        s.expect([pexpect.EOF,pexpect.TIMEOUT])
+        s.expect([pexpect.EOF])
 
 
 class JuniperRouterRemoteSSH(JuniperRouter):

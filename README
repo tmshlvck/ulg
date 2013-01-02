@@ -27,11 +27,12 @@ AddHandler cgi-script .py
 7) access http://yourserver/path-to-ulg/index.py via browser
 8) change strings and templates in defaults.py and templates/*.html .
 
-Procedure for Debian Squeeze/Wheezy:
+Procedure for Debian Squeeze/Wheezy and Linux Mint 14 (nadia):
 1)
 apt-get install python python-pexpect python-pygraph python-genshi libgv-python
 
 All other steps are the same as in generic case.
+
 
 Contacts:
 

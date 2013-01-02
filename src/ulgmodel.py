@@ -328,9 +328,11 @@ class TextCommand(object):
             r=''
             for sl in s[session.getRange():session.getRange()+defaults.range_step+1]:
                 r += sl + "\n"
+                r = r.replace('<','&lt;').replace('>','&gt;')
             return ("<pre>\n%s\n</pre>" % r, len(s))
         else:
-            return ("<pre>\n%s\n</pre>" % session.getResult(), len(str.splitlines(session.getResult())))
+            return ("<pre>\n%s\n</pre>" % session.getResult().replace('<','&lt;').replace('>','&gt;'),
+                    len(str.splitlines(session.getResult())))
 
     def getSpecialContent(self,session,**params):
         raise Exception("getSpecialContet() is not implemented in ulgmodel.TextCommand.")

@@ -28,11 +28,11 @@ import defaults
 import ulgmodel
 import ulggraph
 
+JUNIPER_GRAPH_SH_ROUTE = "Graph show route <IP subnet>"
 STRING_BGP_GRAPH='BGP graph'
 STRING_BGP_GRAPH_ERROR='Error: Can not produce image out of the received output.'
 
 IPV46_SUBNET_REGEXP = '^[0-9a-fA-F:\.]+(/[0-9]{1,2}){0,1}$'
-RTNAME_REGEXP = '^[a-zA-Z0-9]+$'
 
 STRING_EXPECT_SSH_NEWKEY='Are you sure you want to continue connecting'
 STRING_EXPECT_LOGIN='login:'
@@ -46,6 +46,16 @@ table_line_regex = re.compile(TABLE_LINE_REGEX)
 
 TABLE_HEADER_REGEX = "Peer\s+AS\s+InPkt\s+OutPkt\s+OutQ\s+Flaps\s+.*"
 table_header_regex = re.compile(TABLE_HEADER_REGEX)
+
+JUNIPER_BGP_PATH_ACTIVE_REGEX = ".*(\*|\+)\[BGP/[0-9]+\].*"
+juniper_bgp_path_active_regex = re.compile(JUNIPER_BGP_PATH_ACTIVE_REGEX)
+
+JUNIPER_BGP_PATH_REGEX = ".*(-|)\[BGP/[0-9]+\].*"
+juniper_bgp_path_regex = re.compile(JUNIPER_BGP_PATH_REGEX)
+
+JUNIPER_BGP_PATH_CONTENT = ".*AS path: ([0-9\s]+).*"
+juniper_bgp_path_content = re.compile(JUNIPER_BGP_PATH_CONTENT)
+
 
 def jun_parse_show_bgp_sum(lines):
     peers=[]
@@ -62,6 +72,52 @@ def jun_parse_show_bgp_sum(lines):
 
 #    ulgmodel.debug("DEBUG jun_parse_show_bgp_sum: peers="+str(peers))
     return peers
+
+def juniper_parse_sh_route(text,prependas):
+    def split_ases(ases):
+        return str.split(ases)
+
+    DEFAULT_PARAMS = {'recuse':False, 'reconly':False, 'aggr':None}
+
+    res = []
+
+    bgp_start = False
+    params = dict(DEFAULT_PARAMS)
+    for l in str.splitlines(text):
+        ulgmodel.debug("JUNIPER PARSE SHOW ROUTE: l="+str(l))
+        if(juniper_bgp_path_active_regex.match(l)):
+            ulgmodel.debug("JUNIPER PARSE SHOW ROUTE: ACTIVE PATH")
+            bgp_start = True
+            params['recuse']=True
+            continue
+
+        if(juniper_bgp_path_regex.match(l)):
+            ulgmodel.debug("JUNIPER PARSE SHOW ROUTE: NON-ACTIVE PATH")
+            bgp_start = True
+            continue
+
+        m=juniper_bgp_path_content.match(l)
+        if(m and bgp_start):
+            ulgmodel.debug("JUNIPER PARSE SHOW ROUTE: path="+str(m.group(1)))
+            ases = [ulgmodel.annotateAS("AS"+str(asn)) for asn in [prependas] + split_ases(m.group(1))]
+            res.append((ases,params))
+            params = dict(DEFAULT_PARAMS)
+            bgp_start = False
+            continue
+
+    ulgmodel.debug("JUNIPER PARSE SHOW ROUTE: res="+str(res))
+    return res
+
+def juniper_reduce_paths(paths):
+    def assign_value(path):
+        if(path[1]['recuse']):
+            return 1
+        elif(path[1]['reconly']):
+            return 100
+        else:
+            return 10
+
+    return sorted(paths,key=assign_value)
 
 class JuniperShowBgpNeigh(ulgmodel.TextCommand):
     COMMAND_TEXT='show bgp neighbor %s'
@@ -86,6 +142,48 @@ class JuniperShowRouteBgpRecv(ulgmodel.TextCommand):
         peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
                                                  name=defaults.STRING_IPADDRESS)
         ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
+
+class JuniperShowRoute(ulgmodel.TextCommand):
+    COMMAND_TEXT = 'show route %s'
+
+    def __init__(self,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[
+                ulgmodel.TextParameter(pattern=IPV46_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET),
+                ],
+                                      name=name)
+
+
+class JuniperGraphShowRoute(ulgmodel.TextCommand):
+    COMMAND_TEXT = 'show route %s'
+
+    def __init__(self,name=JUNIPER_GRAPH_SH_ROUTE):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[
+                ulgmodel.TextParameter(pattern=IPV46_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET),
+                ],
+                                      name=name)
+
+    def finishHook(self,session):
+        session.setData(juniper_parse_sh_route(session.getResult(),str(session.getRouter().getASN())))
+
+    def decorateResult(self,session,decorator_helper=None):
+        if(session.isFinished()):
+            if(session.getData() != None) and (session.getData() != []):
+                return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),STRING_BGP_GRAPH),1)
+            else:
+                return (STRING_BGP_GRAPH_ERROR, 1)
+        else:
+            return ('',0)
+
+    def getSpecialContent(self,session,**params):
+        paths = session.getData()
+        print "Content-type: image/png\n"
+        ulggraph.bgp_graph_gen(juniper_reduce_paths(paths),start=session.getRouter().getName(),
+			       end=session.getParameters()[0])
+
+    def showRange(self):
+        return False
+
+
 
 
 # ABSTRACT
@@ -125,9 +223,11 @@ class JuniperRouter(ulgmodel.RemoteRouter):
     def _getDefaultCommands(self):
         return [ulgmodel.TextCommand('show version'),
                 ulgmodel.TextCommand('show bgp summary'),
+                JuniperShowRoute(),
                 JuniperShowBgpNeigh(self.getBGPPeers()),
                 JuniperShowRouteBgpRecv(self.getBGPPeers()),
                 JuniperShowRouteBgpAdv(self.getBGPPeers()),
+                JuniperGraphShowRoute(),
                 ]
 
     def rescanPeers(self):
@@ -171,7 +271,7 @@ class JuniperRouterRemoteTelnet(JuniperRouter):
         c = defaults.bin_telnet+' '+self.getHost()+' '+str(self.getPort())
         s=pexpect.spawn(c,timeout=defaults.timeout)
 
-        s.logfile = open('/tmp/ulgjuni.log', 'w')
+#        s.logfile = open('/tmp/ulgjuni.log', 'w')
 
         p=0
         while True:
@@ -212,11 +312,9 @@ class JuniperRouterRemoteTelnet(JuniperRouter):
         while True:
             i=s.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,'\n',pexpect.EOF,pexpect.TIMEOUT])
             if(i==0): # shell prompt -> logout
-                ulgmodel.debug("DEBUG: JUNIPER PEXPECT SHELL HIT")
                 capture=False
                 s.sendline(STRING_LOGOUT_COMMAND)
             elif(i==1):
-                ulgmodel.debug("DEBUG: JUNIPER PEXPECT NEWLINE HIT: "+s.before)
                 if(capture and line >= skiplines):
                     outfile.write(s.before + "\n")
                 line+=1

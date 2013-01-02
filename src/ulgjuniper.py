@@ -41,6 +41,28 @@ STRING_EXPECT_SHELL_PROMPT_REGEXP = '\n[a-zA-Z0-9\._@-]+>'
 STRING_LOGOUT_COMMAND = 'exit'
 STRING_CLI_ININITE_COMMAND = 'set cli screen-length 0'
 
+TABLE_LINE_REGEX = "([0-9a-fA-F:\.]+)\s+([0-9]+)\s+.*"
+table_line_regex = re.compile(TABLE_LINE_REGEX)
+
+TABLE_HEADER_REGEX = "Peer\s+AS\s+InPkt\s+OutPkt\s+OutQ\s+Flaps\s+.*"
+table_header_regex = re.compile(TABLE_HEADER_REGEX)
+
+def jun_parse_show_bgp_sum(lines):
+    peers=[]
+
+    table_started=False
+    for l in str.splitlines(lines):
+        if(table_started):
+            m=table_line_regex.match(l)
+            if(m):
+                peers.append(m.group(1))
+
+        if(table_header_regex.match(l)):
+            table_started=True
+
+#    ulgmodel.debug("DEBUG JUNIPER jun_parse_show_bgp_sum: peers="+str(peers))
+    return peers
+
 # ABSTRACT
 class JuniperRouter(ulgmodel.RemoteRouter):
     RESCAN_PEERS_COMMAND = 'show bgp summary'
@@ -83,7 +105,7 @@ class JuniperRouter(ulgmodel.RemoteRouter):
     def rescanPeers(self):
         res = self.runRawSyncCommand(self.RESCAN_PEERS_COMMAND)
 
-        peers = []
+        peers = jun_parse_show_bgp_sum(res)
 
         self.bgp_peers = peers
 

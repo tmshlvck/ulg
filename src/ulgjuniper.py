@@ -37,7 +37,7 @@ RTNAME_REGEXP = '^[a-zA-Z0-9]+$'
 STRING_EXPECT_SSH_NEWKEY='Are you sure you want to continue connecting'
 STRING_EXPECT_LOGIN='login:'
 STRING_EXPECT_PASSWORD='(P|p)assword:'
-STRING_EXPECT_SHELL_PROMPT_REGEXP = '\n[a-zA-Z0-9\._@-]+>'
+STRING_EXPECT_SHELL_PROMPT_REGEXP = '[^\s]+> '
 STRING_LOGOUT_COMMAND = 'exit'
 STRING_CLI_INFINITE_COMMAND = 'set cli screen-length 0'
 
@@ -171,7 +171,7 @@ class JuniperRouterRemoteTelnet(JuniperRouter):
         c = defaults.bin_telnet+' '+self.getHost()+' '+str(self.getPort())
         s=pexpect.spawn(c,timeout=defaults.timeout)
 
-        # s.logfile = open('/tmp/ulgjuni.log', 'w')
+        s.logfile = open('/tmp/ulgjuni.log', 'w')
 
         p=0
         while True:
@@ -212,9 +212,11 @@ class JuniperRouterRemoteTelnet(JuniperRouter):
         while True:
             i=s.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,'\n',pexpect.EOF,pexpect.TIMEOUT])
             if(i==0): # shell prompt -> logout
+                ulgmodel.debug("DEBUG: JUNIPER PEXPECT SHELL HIT")
                 capture=False
                 s.sendline(STRING_LOGOUT_COMMAND)
             elif(i==1):
+                ulgmodel.debug("DEBUG: JUNIPER PEXPECT NEWLINE HIT: "+s.before)
                 if(capture and line >= skiplines):
                     outfile.write(s.before + "\n")
                 line+=1
@@ -237,7 +239,7 @@ class JuniperRouterRemoteSSH(JuniperRouter):
         c = defaults.bin_ssh+' -p'+str(self.getPort())+' '+str(self.getUser())+'@'+self.getHost()
         s=pexpect.spawn(c,timeout=defaults.timeout)
 
-#        s.logfile = open('/tmp/ulgbird.log', 'w')
+#        s.logfile = open('/tmp/ulgjuni.log', 'w')
 
         # handle ssh
         y=0

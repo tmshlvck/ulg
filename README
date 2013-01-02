@@ -29,7 +29,7 @@ AddHandler cgi-script .py
 
 Procedure for Debian Squeeze/Wheezy and Linux Mint 14 (nadia):
 1)
-apt-get install python python-pexpect python-pygraph python-genshi libgv-python
+apt-get install python python-pexpect python-pygraph python-genshi libgv-python whois
 
 All other steps are the same as in generic case.
 

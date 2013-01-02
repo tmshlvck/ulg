@@ -39,7 +39,7 @@ STRING_EXPECT_LOGIN='login:'
 STRING_EXPECT_PASSWORD='(P|p)assword:'
 STRING_EXPECT_SHELL_PROMPT_REGEXP = '\n[a-zA-Z0-9\._@-]+>'
 STRING_LOGOUT_COMMAND = 'exit'
-STRING_CLI_ININITE_COMMAND = 'set cli screen-length 0'
+STRING_CLI_INFINITE_COMMAND = 'set cli screen-length 0'
 
 TABLE_LINE_REGEX = "([0-9a-fA-F:\.]+)\s+([0-9]+)\s+.*"
 table_line_regex = re.compile(TABLE_LINE_REGEX)
@@ -60,8 +60,33 @@ def jun_parse_show_bgp_sum(lines):
         if(table_header_regex.match(l)):
             table_started=True
 
-#    ulgmodel.debug("DEBUG JUNIPER jun_parse_show_bgp_sum: peers="+str(peers))
+#    ulgmodel.debug("DEBUG jun_parse_show_bgp_sum: peers="+str(peers))
     return peers
+
+class JuniperShowBgpNeigh(ulgmodel.TextCommand):
+    COMMAND_TEXT='show bgp neighbor %s'
+
+    def __init__(self,peers,name=None):
+        peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
+                                                 name=defaults.STRING_IPADDRESS)
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
+
+class JuniperShowRouteBgpAdv(ulgmodel.TextCommand):
+    COMMAND_TEXT='show route advertising-protocol bgp %s'
+
+    def __init__(self,peers,name=None):
+        peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
+                                                 name=defaults.STRING_IPADDRESS)
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
+
+class JuniperShowRouteBgpRecv(ulgmodel.TextCommand):
+    COMMAND_TEXT='show route receive-protocol bgp %s'
+
+    def __init__(self,peers,name=None):
+        peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
+                                                 name=defaults.STRING_IPADDRESS)
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
+
 
 # ABSTRACT
 class JuniperRouter(ulgmodel.RemoteRouter):
@@ -100,6 +125,9 @@ class JuniperRouter(ulgmodel.RemoteRouter):
     def _getDefaultCommands(self):
         return [ulgmodel.TextCommand('show version'),
                 ulgmodel.TextCommand('show bgp summary'),
+                JuniperShowBgpNeigh(self.getBGPPeers()),
+                JuniperShowRouteBgpRecv(self.getBGPPeers()),
+                JuniperShowRouteBgpAdv(self.getBGPPeers()),
                 ]
 
     def rescanPeers(self):
@@ -166,7 +194,7 @@ class JuniperRouterRemoteTelnet(JuniperRouter):
             else:
                 raise Exception("pexpect session failed: Unknown error. last output: "+s.before)
 
-        s.sendline(STRING_CLI_ININITE_COMMAND)
+        s.sendline(STRING_CLI_INFINITE_COMMAND)
         while True:
             i=s.expect([STRING_EXPECT_SHELL_PROMPT_REGEXP,'\n',pexpect.EOF,pexpect.TIMEOUT])
             if(i==0): # shell prompt -> proceed

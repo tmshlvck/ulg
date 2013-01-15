@@ -30,9 +30,9 @@ asname_regex = re.compile(ASNAME_REGEX)
 asname_cache = {}
 
 def lookup(key):
-    s = subprocess.Popen([defaults.bin_whois,
-                          '-H',
-                          key], stdout=subprocess.PIPE)
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    s = subprocess.Popen([defaults.bin_whois, '-H', key],
+                         stdout=subprocess.PIPE)
 
     res=''
     begin = False
@@ -40,7 +40,7 @@ def lookup(key):
         if(re.match('^\s*$',l) and not begin):
             continue
         if(l[0] != '%'):
-            res=res+l
+            res=res+l.decode('utf-8')
             begin = True
 
     return res
@@ -49,14 +49,14 @@ def lookup_as_name(asn):
     if asn in asname_cache:
         return asname_cache[asn]
 
-    s = subprocess.Popen([defaults.bin_whois,
-                          '-H',
-                          asn], stdout=subprocess.PIPE)
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    s = subprocess.Popen([defaults.bin_whois, '-H', asn],
+                         stdout=subprocess.PIPE)
 
     for l in s.stdout.readlines():
         m = asname_regex.match(l)
         if(m):
             asname_cache[asn] = m.group(2)
-            return m.group(2)
+            return m.group(2).decode('utf-8')
 
     return defaults.STRING_UNKNOWN

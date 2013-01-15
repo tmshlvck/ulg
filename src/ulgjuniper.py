@@ -29,8 +29,6 @@ import ulgmodel
 import ulggraph
 
 JUNIPER_GRAPH_SH_ROUTE = "Graph show route <IP subnet>"
-STRING_BGP_GRAPH='BGP graph'
-STRING_BGP_GRAPH_ERROR='Error: Can not produce image out of the received output.'
 
 IPV46_SUBNET_REGEXP = '^[0-9a-fA-F:\.]+(/[0-9]{1,2}){0,1}$'
 
@@ -168,9 +166,9 @@ class JuniperGraphShowRoute(ulgmodel.TextCommand):
     def decorateResult(self,session,decorator_helper=None):
         if(session.isFinished()):
             if(session.getData() != None) and (session.getData() != []):
-                return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),STRING_BGP_GRAPH),1)
+                return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),defaults.STRING_BGP_GRAPH),1)
             else:
-                return (STRING_BGP_GRAPH_ERROR, 1)
+                return (decorator_helper.pre(defaults.STRING_BGP_GRAPH_ERROR), 1)
         else:
             return ('',0)
 

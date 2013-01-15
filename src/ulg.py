@@ -184,13 +184,14 @@ class Session(object):
             # TODO
             return decorator_helper.pre(self.getResult())
         else:
-            result = self.getResult()
-            if(result):
-                dr = self.getCommand().decorateResult(self,decorator_helper)
+            dr = self.getCommand().decorateResult(self,decorator_helper)
+
+            if(dr):
                 self.resultlines = dr[1]
                 return dr[0]
             else:
-                return None
+                self.resultlines = 0
+                return ''
 
     def appendResult(self,result_fragment):
         fn = Session.getSessionOutputFileName(self.sessionid)

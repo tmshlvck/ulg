@@ -30,8 +30,6 @@ import ulgmodel
 import ulggraph
 
 # module globals
-STRING_BGP_GRAPH='BGP graph'
-STRING_BGP_GRAPH_ERROR='Error: Can not produce image out of the received output.'
 STRING_EXPECT_SSH_NEWKEY='Are you sure you want to continue connecting'
 STRING_EXPECT_PASSWORD='(P|p)assword:'
 STRING_EXPECT_SHELL_PROMPT_REGEXP = '\n[a-zA-Z0-9\._-]+>'
@@ -598,12 +596,17 @@ class CiscoCommandGraphShowBgpIPv46Uni(ulgmodel.TextCommand):
 				      name=name)
 
     def decorateResult(self,session,decorator_helper=None):
+        ulgmodel.debug("IN BGP GRAPH decorateResult")
         if(session.isFinished()):
+		ulgmodel.debug("IN BGP GRAPH decorateResult -> session.isFinished=TRUE")
 		if(session.getData() != None) and (session.getData() != []):
-			return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),STRING_BGP_GRAPH),1)
+			ulgmodel.debug("IN BGP GRAPH decorateResult -> session.getData checked OK")
+			return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),defaults.STRING_BGP_GRAPH),1)
 		else:
-			return (STRING_BGP_GRAPH_ERROR, 1)
+			ulgmodel.debug("IN BGP GRAPH decorateResult -> session.getData checked failed, producing error")
+			return (decorator_helper.pre(defaults.STRING_BGP_GRAPH_ERROR), 1)
 	else:
+		ulgmodel.debug("IN BGP GRAPH decorateResult -> session.isFinished=FALSE")
 		return ('',0)
 
     def finishHook(self,session):

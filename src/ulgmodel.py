@@ -323,6 +323,8 @@ class TextCommand(object):
         pass
 
     def decorateResult(self,session,decorator_helper=None):
+        if(session.getResult() == None):
+            return (decorator_helper.pre(defaults.STRING_EMPTY), 1)
         if(session.getRange() != None and self.showRange()):
             s = str.splitlines(session.getResult())
             r=''

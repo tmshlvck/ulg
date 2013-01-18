@@ -32,6 +32,7 @@ import ulgmodel
 ### ULG cron script
 
 SESSION_FILE_REGEX='^ulg-.*\.session$'
+LOGFILE_LIMIT=1048576
 
 class ULGCron:
     def __init__(self):
@@ -57,8 +58,17 @@ class ULGCron:
                 else:
                     ulgmodel.log('Not removing file '+fp+' because it is not at least 1 hour old.')
 
+    def clearLog(self):
+        try:
+            if(os.stat(defaults.log_file).st_size > LOGFILE_LIMIT):
+                os.unlink(defaults.log_file)
+        except OSError as e:
+            ulgmodel.log('Error while checking/removing logfile '+defaults.log_file+' '+str(e))
+        ulgmodel.log("Logfile removed due to excessive size. Please set logrotate to keep the file size below "+str(LOGFILE_LIMIT)+" bytes.")
+
     def run(self):
         ulgmodel.log('ULG cron run.')
+        self.clearLog()
         self.rescanRouters()
         self.clearSessions()
         ulgmodel.log('ULG cron finished.')

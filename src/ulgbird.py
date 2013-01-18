@@ -59,6 +59,7 @@ bird_sock_reply_end_regexp = re.compile(BIRD_SOCK_REPLY_END_REGEXP)
 bird_rt_line_regexp = re.compile(BIRD_RT_LINE_REGEXP)
 bird_asfield_regexp = re.compile(BIRD_ASFIELD_REGEXP)
 bird_show_symbols_line_regexp = re.compile(BIRD_SHOW_SYMBOLS_LINE_REGEXP)
+bird_show_proto_line_regexp = re.compile(BIRD_SHOW_PROTO_LINE_REGEXP)
 
 BIRD_SH_ROUTE_ALL_ASES_REGEXP = "^(\s*BGP\.as_path:\s+)([0-9\s]+)\s*$"
 bird_sh_route_all_ases_regexp = re.compile(BIRD_SH_ROUTE_ALL_ASES_REGEXP)
@@ -106,8 +107,7 @@ def bird_reduce_paths(paths):
 
 def parseBirdShowProtocols(text,resrange=None):
     def parseShowProtocolsLine(line):
-        sh_proto_line_regexp = re.compile(BIRD_SHOW_PROTO_LINE_REGEXP)
-        m = sh_proto_line_regexp.match(line)
+        m = bird_show_proto_line_regexp.match(line)
         if(m):
             res = list(m.groups()[0:5])
             if(m.group(6)):
@@ -115,7 +115,8 @@ def parseBirdShowProtocols(text,resrange=None):
 
             return res
         else:
-            ulgmodel.log("WARN: bird.parseShowProtocolsLine failed to match line: "+line)
+#            skip silently the bgp log
+#            ulgmodel.log("WARN: bird.parseShowProtocolsLine failed to match line: "+line)
             return None
 
 
@@ -133,8 +134,8 @@ def parseBirdShowProtocols(text,resrange=None):
             pl = parseShowProtocolsLine(l)
             if(pl):
                 table.append(pl)
-            else:
-                ulgmodel.log("ulgbird.parseBirdShowProtocols skipping unparsable line: "+l)
+#            else:
+#                ulgmodel.log("ulgbird.parseBirdShowProtocols skipping unparsable line: "+l)
 
     if(resrange):
         return (header,table[resrange:resrange+defaults.range_step],len(table))

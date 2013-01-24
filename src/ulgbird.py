@@ -193,6 +193,9 @@ class BirdShowProtocolsCommand(ulgmodel.TextCommand):
         if(not session):
             raise Exception("Can not decorate result without valid session.")
 
+	if(session.getResult() == None):
+            return (decorator_helper.pre(defaults.STRING_EMPTY), 1)
+
         if((not session.getRouter()) or (not decorator_helper)):
             return "<pre>\n%s\n</pre>" % session.getResult()
         else:
@@ -274,6 +277,9 @@ class BirdShowRouteCommand(ulgmodel.TextCommand):
         if(not session):
             raise Exception("Can not decorate result without valid session.")
 
+	if(session.getResult() == None):
+            return (decorator_helper.pre(defaults.STRING_EMPTY), 1)
+
         if((not session.getRouter()) or (not decorator_helper)):
             return "<pre>\n%s\n</pre>" % session.getResult()
 
@@ -331,6 +337,8 @@ class BirdShowRouteAllCommand(ulgmodel.TextCommand):
             else:
                 return decorator_helper.annotateIPs(l)
 
+	if(session.getResult() == None):
+            return (decorator_helper.pre(defaults.STRING_EMPTY), 1)
 
         s = str.splitlines(session.getResult())
         r=''

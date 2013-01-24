@@ -380,6 +380,9 @@ class CiscoCommandBgpIPv46Sum(ulgmodel.TextCommand):
     def decorateResult(self,session,decorator_helper=None):
         if(not session):
             raise Exception('Can not decorate result without valid session.')
+
+	if(session.getResult() == None):
+            return (decorator_helper.pre(defaults.STRING_EMPTY), 1)
         
         if((not session.getRouter()) or (not decorator_helper)):
             return "<pre>\n%s\n</pre>" % session.getResult()
@@ -433,6 +436,9 @@ class CiscoCommandBgpIPv6Sum(CiscoCommandBgpIPv46Sum):
         return CiscoCommandBgpIPv46Sum.__init__(self,name,peer_address_command,peer_received_command)
 
     def decorateResult(self,session,decorator_helper=None):
+	if(session.getResult() == None):
+            return (decorator_helper.pre(defaults.STRING_EMPTY), 1)
+
         res=''
         for l in normalizeBGPIPv6SumSplitLines(str.splitlines(session.getResult())):
             res = res + "\n" + l
@@ -528,6 +534,9 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
         if(not session):
             raise Exception("Can not decorate result without valid session passed.")
 
+	if(session.getResult() == None):
+            return (decorator_helper.pre(defaults.STRING_EMPTY), 1)
+
         if((not session.getRouter()) or (not decorator_helper)):
             return "<pre>\n%s\n</pre>" % session.getResult()
 
@@ -596,17 +605,12 @@ class CiscoCommandGraphShowBgpIPv46Uni(ulgmodel.TextCommand):
 				      name=name)
 
     def decorateResult(self,session,decorator_helper=None):
-        ulgmodel.debug("IN BGP GRAPH decorateResult")
         if(session.isFinished()):
-		ulgmodel.debug("IN BGP GRAPH decorateResult -> session.isFinished=TRUE")
 		if(session.getData() != None) and (session.getData() != []):
-			ulgmodel.debug("IN BGP GRAPH decorateResult -> session.getData checked OK")
 			return (decorator_helper.img(decorator_helper.getSpecialContentURL(session.getSessionId()),defaults.STRING_BGP_GRAPH),1)
 		else:
-			ulgmodel.debug("IN BGP GRAPH decorateResult -> session.getData checked failed, producing error")
 			return (decorator_helper.pre(defaults.STRING_BGP_GRAPH_ERROR), 1)
 	else:
-		ulgmodel.debug("IN BGP GRAPH decorateResult -> session.isFinished=FALSE")
 		return ('',0)
 
     def finishHook(self,session):

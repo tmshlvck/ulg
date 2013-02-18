@@ -1,4 +1,4 @@
-ULG development version 0.1
+ULG version 0.9
 - development started in June 2012
 - sponsored by CZ.NIC (http://www.nic.cz)
 - intention is to create a versatile Looking Glass for various routers
@@ -38,6 +38,7 @@ Contacts:
 
 * Author: tmshlvck@gmail.com or tomas.hlavacek@nic.cz
 * GIT hub https://github.com/tmshlvck/ulg
+* CZ.NIC Git: git://git.nic.cz/ulg.git
 
 
 Future plans:

@@ -729,7 +729,7 @@ class CiscoRouter(ulgmodel.RemoteRouter):
                 CiscoShowBgpIPv4Uni(),
 		CiscoShowBgpIPv6Uni(),
                 ulgmodel.TextCommand('show ip route %s',[ulgmodel.IPv4AddressParameter()]),
-                ulgmodel.TextCommand('show ipv6 unicast route %s',[ulgmodel.IPv6AddressParameter()]),
+                ulgmodel.TextCommand('show ipv6 route %s',[ulgmodel.IPv6AddressParameter()]),
                 ulgmodel.TextCommand('show ip arp %s',[ulgmodel.TextParameter('.*',name=defaults.STRING_NONEORINTORIPADDRESS)]),
                 ulgmodel.TextCommand('show ipv6 neighbors %s',[ulgmodel.TextParameter('.*',name=defaults.STRING_NONEORINTORIPADDRESS)]),
                 ulgmodel.TextCommand('show mac-address-table address %s',[ulgmodel.TextParameter(MAC_ADDRESS_REGEXP,name=defaults.STRING_MACADDRESS)]),

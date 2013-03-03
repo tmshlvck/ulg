@@ -66,7 +66,7 @@ STRING_DETAILS = "Details of"
 STRING_UNKNOWN = "(unknown)"
 STRING_BGP_GRAPH='BGP graph'
 STRING_BGP_GRAPH_ERROR='Error: Can not produce image out of the received output.'
-STRING_EMPTY='empty'
+STRING_EMPTY='Still empty...'
 
 # URL generator functions
 def getASNURL(asn):

@@ -12,7 +12,7 @@ Basic instalation procedure is:
 2) deploy files in src directory to some place in WWW tree
 3) cp config.py.example config.py
 4) edit config.py to set up routers and credentials
-5) edit defaults.py to set up correct paths
+5) edit defaults.py to set up correct paths toward bins
 6) create .htaccess file with following contents:
 
 <FilesMatch "(.pyc|.*~)">
@@ -24,7 +24,7 @@ AddHandler cgi-script .py
 
 (Or use corresponding config of your web server.)
 
-7) access http://yourserver/path-to-ulg/index.py via browser
+7) access http://yourserver/path-to-ulg/ulg.py via browser
 8) change strings and templates in defaults.py and templates/*.html .
 
 Procedure for Debian Squeeze/Wheezy and Linux Mint 14 (nadia):

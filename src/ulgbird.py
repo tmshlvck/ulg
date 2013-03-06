@@ -654,7 +654,7 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
         key_rt = self.getHost() + self.getName() + self.PS_KEY_RT
 
         
-        ps = ulgmodel.PersistentStorage.load()
+        ps = ulgmodel.loadPersistentStorage()
         ps.set(key_bgp,self.getBGPPeers())
         ps.set(key_rt,self.getRoutingTables())
         ps.save()
@@ -663,7 +663,7 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
         key_bgp = self.getHost() + self.getName() + self.PS_KEY_BGP
         key_rt = self.getHost() + self.getName() + self.PS_KEY_RT
 
-        ps = ulgmodel.PersistentStorage.load()
+        ps = ulgmodel.loadPersistentStorage()
         self.bgp_peers = ps.get(key_bgp)
         self.routing_tables = ps.get(key_rt)
 

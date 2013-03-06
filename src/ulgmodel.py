@@ -64,17 +64,6 @@ class PersistentStorage(object):
         pickle.dump(self, f)
         f.close()
 
-    @staticmethod
-    def load(filename=defaults.persistent_storage_file):
-        # TODO: locking
-        if(os.path.isfile(filename)):
-            f = open(filename, 'rb')
-            s = pickle.load(f)
-            f.close()
-            return s
-        else:
-            return PersistentStorage()
-
     def get(self,key):
         return self.data.get(key,None)
 
@@ -87,6 +76,18 @@ class PersistentStorage(object):
 
     def getDict(self):
         return self.data
+
+
+def loadPersistentStorage(filename=defaults.persistent_storage_file):
+    # TODO: locking
+    if(os.path.isfile(filename)):
+        f = open(filename, 'rb')
+        s = pickle.load(f)
+        f.close()
+        return s
+    else:
+        return PersistentStorage()
+
 
 class TableDecorator(object):
     WHITE = 'white'

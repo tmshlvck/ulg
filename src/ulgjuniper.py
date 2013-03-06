@@ -241,14 +241,14 @@ class JuniperRouter(ulgmodel.RemoteRouter):
     def savePersistentInfo(self):
         key_bgp = self.getHost() + self.getName() + self.PS_KEY_BGP
         
-        ps = ulgmodel.PersistentStorage.load()
+        ps = ulgmodel.loadPersistentStorage()
         ps.set(key_bgp,self.getBGPPeers())
         ps.save()
                
     def loadPersistentInfo(self):
         key_bgp = self.getHost() + self.getName() + self.PS_KEY_BGP
 
-        ps = ulgmodel.PersistentStorage.load()
+        ps = ulgmodel.loadPersistentStorage()
         self.bgp_peers = ps.get(key_bgp)
 
         if(not self.getBGPPeers()):

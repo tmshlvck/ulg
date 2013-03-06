@@ -800,7 +800,7 @@ class CiscoRouter(ulgmodel.RemoteRouter):
         key4 = self.getHost() + self.PS_KEY_BGPV4
         key6 = self.getHost() + self.PS_KEY_BGPV6
 
-        ps = ulgmodel.PersistentStorage.load()
+        ps = ulgmodel.loadPersistentStorage()
         ps.set(key4,self.getBGPIPv4Peers())
         ps.set(key6,self.getBGPIPv6Peers())
         ps.save()
@@ -809,7 +809,7 @@ class CiscoRouter(ulgmodel.RemoteRouter):
         key4 = self.getHost() + self.PS_KEY_BGPV4
         key6 = self.getHost() + self.PS_KEY_BGPV6
 
-        ps = ulgmodel.PersistentStorage.load()
+        ps = ulgmodel.loadPersistentStorage()
         self.bgp_ipv4_peers = ps.get(key4)
         self.bgp_ipv6_peers = ps.get(key6)
 

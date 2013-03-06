@@ -178,11 +178,11 @@ def testULGRescan():
 
 def testULGPersistentStorage():
     try:
-        ps = ulgmodel.PersistentStorage.load()
+        ps = ulgmodel.loadPersistentStorage()
         ps.set('test','teststring')
         ps.save()
 
-        ps2 = ulgmodel.PersistentStorage.load()
+        ps2 = ulgmodel.loadPersistentStorage()
         if(ps2.get('test') == 'teststring'):
             ps2.delete('test')
             if(ps2.get('test') == None):

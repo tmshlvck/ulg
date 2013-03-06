@@ -98,7 +98,7 @@ def testULGSessions(sessionid=None):
     try:
         s1 = ulg.Session(sessionid,routerid=1,commandid=2,parameters={'baba':'bubu'},result='reeesult')
         sid = s1.getSessionId()
-        s2 = ulg.Session.load(sid)
+        s2 = ulg.loadSession(sid)
         if(s1.getSessionId() == s2.getSessionId() and s1.getRouterId() == s2.getRouterId()):
             print "OK: Test sessions."
             return True

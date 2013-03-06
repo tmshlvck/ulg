@@ -46,6 +46,18 @@ ipv6_annotate_regexp = re.compile(IPV6_ANNOTATE_REGEXP)
 
 ### CGI output handler
 
+def getSessionFileName(sessionid):
+    if(re.compile('^[a-zA-Z0-9]{10,128}$').match(sessionid)):
+        return defaults.session_dir+'/'+'ulg-'+sessionid+'.session'
+    else:
+        raise Exception('Invalid session id passed. Value was: '+sessionid)
+
+def getSessionOutputFileName(sessionid):
+    if(re.compile('^[a-zA-Z0-9]{10,128}$').match(sessionid)):
+        return defaults.session_dir+'/'+'ulg-'+sessionid+'.out.session'
+    else:
+        raise Exception('Invalid session id passed. Value was: '+sessionid)
+
 class Session(object):
     def __init__(self,sessionid=None,routerid=None,commandid=None,parameters=[],result=None,finished=False,error=None,resrange=None,copy=None):
         if(copy):
@@ -79,42 +91,9 @@ class Session(object):
     def __genSessionId__(self):
         return md5.new(str(time.time())+str(random.randint(1,1000000))).hexdigest()
 
-    @staticmethod
-    def getSessionFileName(sessionid):
-        if(re.compile('^[a-zA-Z0-9]{10,128}$').match(sessionid)):
-            return defaults.session_dir+'/'+'ulg-'+sessionid+'.session'
-        else:
-            raise Exception('Invalid session id passed. Value was: '+sessionid)
-
-    @staticmethod
-    def getSessionOutputFileName(sessionid):
-        if(re.compile('^[a-zA-Z0-9]{10,128}$').match(sessionid)):
-            return defaults.session_dir+'/'+'ulg-'+sessionid+'.out.session'
-        else:
-            raise Exception('Invalid session id passed. Value was: '+sessionid)
-
-    @staticmethod
-    def load(sessionid):
-        if(sessionid == None):
-            return None
-
-        try:
-            fn = Session.getSessionFileName(sessionid)
-
-            if(os.path.isfile(fn)):
-                f = open(fn, 'rb')
-                s = pickle.load(f)
-                f.close()
-                return s
-            else:
-                return None
-            
-        except Exception:
-            return None
-
     def save(self):
         try:
-            fn = Session.getSessionFileName(self.getSessionId())
+            fn = getSessionFileName(self.getSessionId())
             f = open(fn,'wb')
             pickle.dump(self, f)
             f.close()
@@ -159,7 +138,7 @@ class Session(object):
         return self.parameters
 
     def setResult(self,result):
-        fn = Session.getSessionOutputFileName(self.sessionid)
+        fn = getSessionOutputFileName(self.sessionid)
 
         f = open(fn, 'w')
         f.write(result)
@@ -167,7 +146,7 @@ class Session(object):
 
     def getResult(self):
         try:
-            fn = Session.getSessionOutputFileName(self.sessionid)
+            fn = getSessionOutputFileName(self.sessionid)
 
             if(os.path.isfile(fn)):
                 f = open(fn, 'r')
@@ -194,7 +173,7 @@ class Session(object):
                 return ''
 
     def appendResult(self,result_fragment):
-        fn = Session.getSessionOutputFileName(self.sessionid)
+        fn = getSessionOutputFileName(self.sessionid)
 
         f = open(fn, 'a')
         f.write(result_fragment)
@@ -202,7 +181,7 @@ class Session(object):
 
     def clearResult(self):
         try:
-            fn = Session.getSessionOutputFileName(self.sessionid)
+            fn = getSessionOutputFileName(self.sessionid)
 
             if(os.path.isfile(fn)):
                 f=open(fn,'w')
@@ -250,6 +229,24 @@ class Session(object):
     def setData(self,data):
         self.data = data
         self.save()
+
+def loadSession(sessionid):
+    if(sessionid == None):
+        return None
+
+    try:
+        fn = getSessionFileName(sessionid)
+
+        if(os.path.isfile(fn)):
+            f = open(fn, 'rb')
+            s = pickle.load(f)
+            f.close()
+            return s
+        else:
+            return None
+            
+    except Exception:
+        return None
 
 
 class DecoratorHelper:
@@ -600,7 +597,7 @@ class ULGCgi:
         if(sessionid==None):
             return self.HTTPRedirect(self.decorator_helper.getErrorURL())
 
-        session = Session.load(sessionid)
+        session = loadSession(sessionid)
         if(session == None):
             return self.HTTPRedirect(self.decorator_helper.getErrorURL())
 
@@ -635,7 +632,7 @@ class ULGCgi:
 
         result_text = defaults.STRING_ARBITRARY_ERROR
 
-        session = Session.load(sessionid)
+        session = loadSession(sessionid)
         if(session!=None):
             result_text=self.decorator_helper.pre(self.sessions[sessionid].getError())
 
@@ -672,7 +669,7 @@ class ULGCgi:
         if(sessionid==None):
             return self.HTTPRedirect(self.decorator_helper.getErrorURL())
 
-        session = Session.load(sessionid)
+        session = loadSession(sessionid)
         if(session == None):
             return self.HTTPRedirect(self.decorator_helper.getErrorURL())
 

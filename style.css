@@ -259,15 +259,9 @@ p {
     #result table tr td, #result table tr th {
 	font-size:0.9em;
     }
-  body {
-/*      border:10px solid pink; */
-  }
 }
 
 @media all and (min-width: 750px) {
-  body {
-/*       border:10px solid green; */
-  }
   .form div#paramsect {
       clear:none;
   }
@@ -281,9 +275,6 @@ p {
     font-size: 90%;
     line-height: 1.5;
   }
-  body {
-/*       border:10px solid blue; */
-  }
   .form div#paramsect {
       clear:none;
   }
@@ -294,9 +285,6 @@ p {
     font-size: 110%;
     line-height: 1.8;
     }
-  body {
-/*      border:10px solid red; */
-  }
   .form div#paramsect {
       clear:none;
   }

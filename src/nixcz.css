@@ -1,0 +1,18 @@
+/* option CSS for personalising display */
+
+#header {
+    box-shadow: none;
+    border-bottom:1px solid #A0A0A0;
+    background: white url('images/nixcz-logo-barva.png') no-repeat 50px 8px;
+}
+
+#header H1 {
+    font: 1.4em verdana;
+    color:#A0A0A0;
+}
+
+#footer {
+    background: none repeat scroll 0 0 #A0A0A0;
+    box-shadow: none;
+    border-top:1px solid #A0A0A0;
+}

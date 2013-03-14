@@ -33,17 +33,12 @@ body {
     padding:0.8em;
     background:#333840;
     box-shadow: #333840 0 0 4px 4px;
-/*
-    background:#caecfb;
-    box-shadow: #caecfb 0 4px 4px;
-*/
 }
-/* FDDD99 */
+
 #header H1 {
     font-size:1.4em;
     margin:0 0 0 10%;
     color:white;
-/*    text-shadow: 1px 1px 0 #caecfb; */
 }
 
 #header span, #header span a {

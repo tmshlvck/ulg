@@ -27,6 +27,6 @@ pip-log.txt
 .mr.developer.cfg
 
 # Potentialy sensitive files
-src/config.py
+config.py
 
-src/.htaccess
+.htaccess

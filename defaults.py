@@ -16,6 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Router config file
+config_file = '/etc/ulg/config.py'
+
 # HTML presentation settings
 header = 'Universal looking glass test header'
 refresh_interval = 5                             # interval of html refresh

@@ -32,11 +32,12 @@ import md5
 import time
 import random
 
-import config
 import defaults
 
 import ulgmodel
 import whois
+
+config = ulgmodel.import_config()
 
 IPV4_ANNOTATE_REGEXP = '([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(/[0-9]{1,2})?)'
 ipv4_annotate_regexp = re.compile(IPV4_ANNOTATE_REGEXP)

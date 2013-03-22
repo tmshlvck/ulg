@@ -21,7 +21,6 @@
 import os, sys
 import random
 
-import config
 import defaults
 
 import ulgmodel
@@ -32,6 +31,8 @@ import sys
 import re
 import time
 import traceback
+
+config = ulgmodel.import_config()
 
 
 def testRouterCommand(router=0,command=0,params=[]):

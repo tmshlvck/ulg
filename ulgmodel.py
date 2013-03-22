@@ -20,6 +20,7 @@
 # Imports
 import os
 import re
+import sys
 from time import localtime, strftime
 from genshi.template import TemplateLoader
 from genshi.core import Markup
@@ -49,6 +50,14 @@ def debug(message):
     if(defaults.debug):
         log('DEBUG:' + message)
 
+def import_config():
+    path, filename = os.path.split(defaults.config_file)
+    filename, ext = os.path.splitext(filename)
+    sys.path.append(path)
+    module = __import__(filename)
+    reload(module)
+    del sys.path[-1]
+    return module
 
 def annotateAS(asn):
     return asn+' | '+whois.lookup_as_name(asn)

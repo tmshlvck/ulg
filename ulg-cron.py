@@ -24,10 +24,11 @@ import time, datetime
 import pickle
 import re
 
-import config
 import defaults
 
 import ulgmodel
+
+config = ulgmodel.import_config()
 
 ### ULG cron script
 

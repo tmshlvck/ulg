@@ -746,7 +746,7 @@ class CiscoRouter(ulgmodel.RemoteRouter):
         self.bgp_ipv4_peers = []
         self.bgp_ipv6_peers = []
         if(name):
-            self,setName(name)
+            self.setName(name)
         else:
             self.setName(host)
 	self.setASN(asn)

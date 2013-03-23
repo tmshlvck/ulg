@@ -32,7 +32,7 @@ import ulggraph
 # module globals
 STRING_EXPECT_SSH_NEWKEY='Are you sure you want to continue connecting'
 STRING_EXPECT_PASSWORD='(P|p)assword:'
-STRING_EXPECT_SHELL_PROMPT_REGEXP = '\n[a-zA-Z0-9\._-]+>'
+STRING_EXPECT_SHELL_PROMPT_REGEXP = '\n[a-zA-Z0-9\._-]+(>|#)'
 BGP_IPV6_SUM_TABLE_SPLITLINE_REGEXP='^\s*[0-9a-fA-F:]+\s*$'
 
 BGP_IPV6_TABLE_HEADER_REGEXP='^\s*(Neighbor)\s+(V)\s+(AS)\s+(MsgRcvd)\s+(MsgSent)\s+(TblVer)\s+(InQ)\s+(OutQ)\s+(Up/Down)\s+(State/PfxRcd)\s*$'
@@ -738,14 +738,17 @@ class CiscoRouter(ulgmodel.RemoteRouter):
 		_graph_show_bgp_ipv6_uni,
                 ]
 
-    def __init__(self, host, user, password, port=22, commands=None, enable_bgp=True, asn='My ASN'):
+    def __init__(self, host, user, password, port=22, commands=None, enable_bgp=True, asn='My ASN', name=None):
         self.setHost(host)
         self.setPort(port)
         self.setUser(user)
         self.setPassword(password)
         self.bgp_ipv4_peers = []
         self.bgp_ipv6_peers = []
-        self.setName(host)
+        if(name):
+            self,setName(name)
+        else:
+            self.setName(host)
 	self.setASN(asn)
 
         if enable_bgp:

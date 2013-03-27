@@ -169,7 +169,10 @@
 	    </py:otherwise>
 	  </py:choose>
 	  <p py:if="defined('refresh') and (refresh>0)">
-	    <em>Please wait for data from the router...</em><br/>
+	    <div style="width:100%; text-align:center">
+              <img src="images/preload.gif" align="middle" width="48" height="35" alt="Loading..." />
+	    </div>
+	    <br/>
 	    <em>The page is going to be refreshed in $refresh seconds.</em>
 	  </p>
 	</div>

@@ -703,7 +703,7 @@ class CiscoRouter(ulgmodel.RemoteRouter):
     PS_KEY_BGPV6 = '-bgpipv6'
 
     def _getDefaultCommands(self):
-        return _getBGPCommands(self)
+        return self._getBGPCommands()
 
     def _getAllCommands(self):
         _show_bgp_ipv4_uni_neigh = CiscoCommandShowBgpIPv4Neigh(self.getBGPIPv4Peers())

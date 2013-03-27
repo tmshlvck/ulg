@@ -84,8 +84,8 @@ def cisco_parse_sh_bgp_uni(lines,prependas):
 		res = {'recuse':False, 'reconly':False, 'aggr':None}
 
 		for g in info.split(','):
-			if(regex_sh_bgp_uni_recuse.match(g)):
-				res['recuse'] = True
+#			if(regex_sh_bgp_uni_recuse.match(g)):
+#				res['recuse'] = True
 			if(regex_sh_bgp_uni_reconly.match(g)):
 				res['reconly'] = True
 

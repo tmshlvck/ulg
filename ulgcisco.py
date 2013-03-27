@@ -825,7 +825,9 @@ class CiscoRouter(ulgmodel.RemoteRouter):
 	# connect
         c=defaults.bin_ssh+' -p'+str(self.getPort())+' '+str(self.getUser())+'@'+self.getHost()
         s=pexpect.spawn(c,timeout=defaults.timeout)
-	s.logfile = open('/tmp/ulgcisco.log', 'w')
+
+##      Debug logging
+#	s.logfile = open('/tmp/ulgcisco.log', 'w')
 
 	y=0
 	p=0

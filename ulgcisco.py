@@ -34,6 +34,7 @@ STRING_EXPECT_SSH_NEWKEY='Are you sure you want to continue connecting'
 STRING_EXPECT_PASSWORD='(P|p)assword:'
 STRING_EXPECT_SHELL_PROMPT_REGEXP = '\n[a-zA-Z0-9\._-]+(>|#)'
 BGP_IPV6_SUM_TABLE_SPLITLINE_REGEXP='^\s*[0-9a-fA-F:]+\s*$'
+IPV46_ADDR_REGEXP = '^[0-9a-fA-F:\.]+$'
 
 BGP_IPV6_TABLE_HEADER_REGEXP='^\s*(Neighbor)\s+(V)\s+(AS)\s+(MsgRcvd)\s+(MsgSent)\s+(TblVer)\s+(InQ)\s+(OutQ)\s+(Up/Down)\s+(State/PfxRcd)\s*$'
 BGP_IPV6_TABLE_LINE_REGEXP='^\s*([0-9a-fA-F:]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([a-zA-Z0-9:]+)\s+([a-zA-Z0-9\(\)]+|[a-zA-Z0-9]+\s\(Admin\))\s*$'
@@ -739,6 +740,8 @@ class CiscoRouter(ulgmodel.RemoteRouter):
                 ulgmodel.TextCommand('show mac-address-table interface %s',[ulgmodel.TextParameter('.*',name=defaults.STRING_INTERFACE)]),
                 _graph_show_bgp_ipv4_uni,
 		_graph_show_bgp_ipv6_uni,
+		ulgmodel.TextCommand('ping %s',[ulgmodel.IPv64AddressParameter()]),
+		ulgmodel.TextCommand('traceroute %s',[ulgmodel.IPv64AddressParameter()]),
                 ]
 
     def _getBGPCommands(self):
@@ -768,6 +771,8 @@ class CiscoRouter(ulgmodel.RemoteRouter):
 		CiscoShowBgpIPv6Uni(),
                 _graph_show_bgp_ipv4_uni,
 		_graph_show_bgp_ipv6_uni,
+		ulgmodel.TextCommand('ping %s',[ulgmodel.IPv64AddressParameter()]),
+		ulgmodel.TextCommand('traceroute %s',[ulgmodel.IPv64AddressParameter()]),
                 ]
 
 

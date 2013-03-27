@@ -743,7 +743,10 @@ if __name__=="__main__":
         action = form.getvalue('action',None)
         params = dict([(k,form.getvalue(k)) for k in form.keys() if k != 'action'])
 
-        ulgmodel.log("Request from "+os.environ["REMOTE_ADDR"]+" with action="+str(action)+" params="+str(params)+'.')
+        if("REMOTE_ADDR" in os.environ):
+            ulgmodel.log("Request from "+os.environ["REMOTE_ADDR"]+" with action="+str(action)+" params="+str(params)+'.')
+        else:
+            ulgmodel.log("Request from console with action="+str(action)+" params="+str(params)+'.')
     
         if(action):
             if(action == 'index'):

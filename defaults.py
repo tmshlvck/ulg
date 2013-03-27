@@ -20,7 +20,7 @@
 config_file = '/etc/ulg/config.py'
 
 # HTML presentation settings
-header = 'Universal looking glass test header'
+header = 'Universal looking glass'
 refresh_interval = 5                             # interval of html refresh
 usage_limit = 1                                  # maximum concurrently processed requests
 range_step = 100                                 # number of table lines in the decorated output per page
@@ -69,7 +69,7 @@ STRING_DETAILS = "Details of"
 STRING_UNKNOWN = "(unknown)"
 STRING_BGP_GRAPH='BGP graph'
 STRING_BGP_GRAPH_ERROR='Error: Can not produce image out of the received output.'
-STRING_EMPTY='Still empty...'
+STRING_EMPTY=' '
 
 # URL generator functions
 def getASNURL(asn):

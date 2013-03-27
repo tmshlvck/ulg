@@ -169,6 +169,7 @@ class TextParameter(object):
             raise Exception("Invalid input encountered: Check did not passed.")
 
 class AddressParameter(TextParameter):
+    """ Abstract base class """
     def __init__(self,pattern=None,name=defaults.STRING_IPADDRESS,default=''):
         TextParameter.__init__(self,pattern,name,default)
 

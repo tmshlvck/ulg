@@ -212,7 +212,7 @@ class BirdShowProtocolsCommand(ulgmodel.TextCommand):
             return (ulgmodel.TableDecorator(table,table_header).decorate(),pr[2])
 
 
-class BirdBGPPeerSelectCommand(ulgmodel.TextCommand):
+class AbstractBGPPeerSelectCommand(ulgmodel.TextCommand):
     """ Abstract class for all BIRD BGP peer-specific commands """
 
     def __init__(self,peers,name=None):
@@ -220,24 +220,15 @@ class BirdBGPPeerSelectCommand(ulgmodel.TextCommand):
                                                  name=defaults.STRING_PEERID)
         ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
 
-class BirdShowProtocolsAllCommand(BirdBGPPeerSelectCommand):
+
+class BirdShowProtocolsAllCommand(AbstractBGPPeerSelectCommand):
     COMMAND_TEXT = 'show protocols all %s'
 
-class BirdShowRouteExportCommand(BirdBGPPeerSelectCommand):
-    COMMAND_TEXT = 'show route export %s'
 
-class BirdShowRouteCommand(ulgmodel.TextCommand):
-    COMMAND_TEXT = 'show route table %s for %s'
 
-    def __init__(self,tables,name=None):
-        table_param = ulgmodel.SelectionParameter([tuple((t,t,)) for t in tables],
-                                                  name=defaults.STRING_RTABLE)
 
-        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[
-                table_param,
-                ulgmodel.TextParameter(pattern=IPV46_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET),
-                ],name=name)
 
+class AbstractRouteTableCommand(ulgmodel.TextCommand):
 
     def _decorateOriginAS(self,asfield,decorator_helper):
         # expected input is "[AS28171i]"
@@ -298,6 +289,25 @@ class BirdShowRouteCommand(ulgmodel.TextCommand):
         table = self._genTable(lines,decorator_helper,session.getRouter())
 
         return (ulgmodel.TableDecorator(table,table_header).decorate(),result_len)
+
+
+
+
+class BirdShowRouteExportCommand(AbstractBGPPeerSelectCommand,AbstractRouteTableCommand):
+    COMMAND_TEXT = 'show route export %s'
+
+class BirdShowRouteCommand(AbstractRouteTableCommand):
+    COMMAND_TEXT = 'show route table %s for %s'
+
+    def __init__(self,tables,name=None):
+        table_param = ulgmodel.SelectionParameter([tuple((t,t,)) for t in tables],
+                                                  name=defaults.STRING_RTABLE)
+
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[
+                table_param,
+                ulgmodel.TextParameter(pattern=IPV46_SUBNET_REGEXP,name=defaults.STRING_IPSUBNET),
+                ],name=name)
+
 
 class BirdShowRouteProtocolCommand(BirdShowRouteCommand):
     COMMAND_TEXT = 'show route table %s protocol %s'
@@ -398,8 +408,8 @@ class BirdRouter(ulgmodel.Router):
                 sh_proto_export,
                 BirdShowRouteAllCommand(self.getRoutingTables()),
                 BirdGraphShowRouteAll(self.getRoutingTables()),
-                ulgmodel.TextCommand('show status'),
-                ulgmodel.TextCommand('show memory')
+#                ulgmodel.TextCommand('show status'),
+#                ulgmodel.TextCommand('show memory')
                 ]
 
 class BirdRouterLocal(ulgmodel.LocalRouter,BirdRouter):

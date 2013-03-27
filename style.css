@@ -282,7 +282,7 @@ p {
 
 @media all and (min-width: 1420px) {
    #wrapper {
-    font-size: 110%;
+    font-size: 95%;
     line-height: 1.8;
     }
   .form div#paramsect {

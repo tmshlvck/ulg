@@ -703,6 +703,9 @@ class CiscoRouter(ulgmodel.RemoteRouter):
     PS_KEY_BGPV6 = '-bgpipv6'
 
     def _getDefaultCommands(self):
+        return _getBGPCommands(self)
+
+    def _getAllCommands(self):
         _show_bgp_ipv4_uni_neigh = CiscoCommandShowBgpIPv4Neigh(self.getBGPIPv4Peers())
         _show_bgp_ipv4_uni_neigh_advertised = CiscoCommandShowBgpIPv4NeighAdv(self.getBGPIPv4Peers())
         _show_bgp_ipv4_uni_neigh_received_routes = CiscoCommandShowBgpIPv4NeighRecv(self.getBGPIPv4Peers())
@@ -737,6 +740,36 @@ class CiscoRouter(ulgmodel.RemoteRouter):
                 _graph_show_bgp_ipv4_uni,
 		_graph_show_bgp_ipv6_uni,
                 ]
+
+    def _getBGPCommands(self):
+        _show_bgp_ipv4_uni_neigh = CiscoCommandShowBgpIPv4Neigh(self.getBGPIPv4Peers())
+        _show_bgp_ipv4_uni_neigh_advertised = CiscoCommandShowBgpIPv4NeighAdv(self.getBGPIPv4Peers())
+        _show_bgp_ipv4_uni_neigh_received_routes = CiscoCommandShowBgpIPv4NeighRecv(self.getBGPIPv4Peers())
+        _show_bgp_ipv6_uni_neigh = CiscoCommandShowBgpIPv6Neigh(self.getBGPIPv6Peers())
+        _show_bgp_ipv6_uni_neigh_advertised = CiscoCommandShowBgpIPv6NeighAdv(self.getBGPIPv6Peers())
+        _show_bgp_ipv6_uni_neigh_received_routes = CiscoCommandShowBgpIPv6NeighRecv(self.getBGPIPv6Peers())
+        _graph_show_bgp_ipv4_uni = CiscoCommandGraphShowBgpIPv4Uni(self.getBGPIPv4Peers(),COMMAND_NAME_GRAPH4)
+	_graph_show_bgp_ipv6_uni = CiscoCommandGraphShowBgpIPv6Uni(self.getBGPIPv6Peers(),COMMAND_NAME_GRAPH6)
+
+        return [
+		CiscoCommandBgpIPv4Sum('show bgp ipv4 unicast summary',
+                                        peer_address_command=_show_bgp_ipv4_uni_neigh,
+                                       peer_received_command=_show_bgp_ipv4_uni_neigh_received_routes),
+                CiscoCommandBgpIPv6Sum('show bgp ipv6 unicast summary',
+                                       peer_address_command=_show_bgp_ipv6_uni_neigh,
+                                       peer_received_command=_show_bgp_ipv6_uni_neigh_received_routes),
+                _show_bgp_ipv4_uni_neigh,
+                _show_bgp_ipv6_uni_neigh,
+                _show_bgp_ipv4_uni_neigh_received_routes,
+                _show_bgp_ipv6_uni_neigh_received_routes,
+                _show_bgp_ipv4_uni_neigh_advertised,
+                _show_bgp_ipv6_uni_neigh_advertised,
+                CiscoShowBgpIPv4Uni(),
+		CiscoShowBgpIPv6Uni(),
+                _graph_show_bgp_ipv4_uni,
+		_graph_show_bgp_ipv6_uni,
+                ]
+
 
     def __init__(self, host, user, password, port=22, commands=None, enable_bgp=True, asn='My ASN', name=None):
         self.setHost(host)

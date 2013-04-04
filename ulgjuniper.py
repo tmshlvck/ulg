@@ -22,6 +22,7 @@ import os
 import socket
 import re
 import pexpect
+import hashlib
 
 import defaults
 
@@ -120,26 +121,20 @@ def juniper_reduce_paths(paths):
 class JuniperShowBgpNeigh(ulgmodel.TextCommand):
     COMMAND_TEXT='show bgp neighbor %s'
 
-    def __init__(self,peers,name=None):
-        peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
-                                                 name=defaults.STRING_IPADDRESS)
-        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
+    def __init__(self,router,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[router.getBGPPeerSelect()],name=name)
 
 class JuniperShowRouteBgpAdv(ulgmodel.TextCommand):
     COMMAND_TEXT='show route advertising-protocol bgp %s'
 
-    def __init__(self,peers,name=None):
-        peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
-                                                 name=defaults.STRING_IPADDRESS)
-        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
+    def __init__(self,router,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[router.getBGPPeerSelect()],name=name)
 
 class JuniperShowRouteBgpRecv(ulgmodel.TextCommand):
     COMMAND_TEXT='show route receive-protocol bgp %s'
 
-    def __init__(self,peers,name=None):
-        peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
-                                                 name=defaults.STRING_IPADDRESS)
-        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
+    def __init__(self,router,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[router.getBGPPeerSelect()],name=name)
 
 class JuniperShowRoute(ulgmodel.TextCommand):
     COMMAND_TEXT = 'show route %s'
@@ -193,6 +188,7 @@ class JuniperRouter(ulgmodel.RemoteRouter):
     def __init__(self,host,user,password='',port=22,commands=None,asn='My ASN',name=None):
         ulgmodel.RemoteRouter.__init__(self)
 
+        self.bgp_peer_select = None
         self.setHost(host)
         self.setUser(user)
         self.setPassword(password)
@@ -222,9 +218,9 @@ class JuniperRouter(ulgmodel.RemoteRouter):
         return [ulgmodel.TextCommand('show version'),
                 ulgmodel.TextCommand('show bgp summary'),
                 JuniperShowRoute(),
-                JuniperShowBgpNeigh(self.getBGPPeers()),
-                JuniperShowRouteBgpRecv(self.getBGPPeers()),
-                JuniperShowRouteBgpAdv(self.getBGPPeers()),
+                JuniperShowBgpNeigh(self),
+                JuniperShowRouteBgpRecv(self),
+                JuniperShowRouteBgpAdv(self),
                 JuniperGraphShowRoute(),
                 ]
 
@@ -237,6 +233,18 @@ class JuniperRouter(ulgmodel.RemoteRouter):
 
     def getBGPPeers(self):
         return self.bgp_peers
+
+    def initBGPPeerSelect(self,peers):
+        rid = hashlib.md5(self.getName()).hexdigest()
+        self.bgp_peer_select = ulgmodel.CommonSelectionParameter(rid+"bgp",[tuple((p,p,)) for p in peers],
+                                                                  name=defaults.STRING_PEERID)
+
+    def getBGPPeerSelect(self):
+        if(not self.bgp_peer_select):
+            self.initBGPPeerSelect(self.getBGPPeers())
+
+        return self.bgp_peer_select
+
 
     def savePersistentInfo(self):
         key_bgp = self.getHost() + self.getName() + self.PS_KEY_BGP

@@ -20,53 +20,69 @@
         var rs=document.getElementById("routerselect");
         var cs=document.getElementById("commandselect");
 
+      <py:for each="cp in commonparams.keys()">
+	var commondict_${cp} = ' \
+	<py:for each="paridx,partuple in enumerate(commonparams[cp].getOptions())">
+	  <option value="${partuple[0]}"> ${partuple[1]} </option> \
+	</py:for>
+	';
+      </py:for>
+
       <py:for each="ridx,router in enumerate(routers)">
 	<py:for each="cidx,cmd in enumerate(routers[ridx].listCommands())">
 <![CDATA[        if((rs.options[rs.selectedIndex].value==$ridx) && (cs.options[cs.selectedIndex].value==$cidx)) { ]]>
 
-            document.getElementById("paramsect").innerHTML='                                                                            \
+            document.getElementById("paramsect").innerHTML=' \
             <py:for each="pidx,param in enumerate(routers[ridx].listCommands()[cidx].getParamSpecs())">
-	        <fieldset>                                                                                                              \
-		<label for="param${pidx}">                                                                                              \
-		  ${pidx+3}. ${param.getName()}:                                                                                        \
-		</label>                                                                                                                \
+	        <fieldset> \
+		<label for="param${pidx}"> \
+		  ${pidx+3}. ${param.getName()}: \
+		</label> \
 		<py:choose>
+		  <py:when test="param.getType() == 'commonselect'">
+		    <select name="param${pidx}" id="param${pidx}"> \
+		      ' + commondict_${param.getID()} + ' \
+		    </select> \
+		  </py:when>
 		  <py:when test="param.getType() == 'select'">
-		      <select name="param${pidx}" id="param${pidx}">                                                                    \
-			<py:for each="paridx,partuple in enumerate(param.getOptions())">
-			  <py:choose>
-			    <py:when test="default_routerid == ridx and default_commandid == cidx and defined('default_params') and partuple[0] == default_params[pidx]">
-			      <option value="${partuple[0]}" selected="selected">                                                       \
-				${partuple[1]}                                                                                          \
-			      </option>                                                                                                 \
-			    </py:when>
-			    <py:when test="partuple[0] == param.getDefault()">
-			      <option value="${partuple[0]}" selected="selected">                                                       \
-				${partuple[1]}                                                                                          \
-			      </option>                                                                                                 \
-			    </py:when>
-			    <py:otherwise>
-			      <option value="${partuple[0]}">                                                                           \
-				${partuple[1]}                                                                                          \
-			      </option>                                                                                                 \
-			    </py:otherwise>
-			  </py:choose>
-			</py:for>
-		      </select>                                                                                                         \
+		    <select name="param${pidx}" id="param${pidx}"> \
+		      <py:for each="paridx,partuple in enumerate(param.getOptions())">
+			<option value="${partuple[0]}"> \
+			  ${partuple[1]} \
+			</option> \
+		      </py:for>
+		    </select> \
 		  </py:when>
 		  <py:otherwise>
 		      <py:choose>
 			<py:when test="default_routerid == ridx and default_commandid == cidx and defined('default_params') and pidx &lt; len(default_params)">
-	  <input type="text" name="param${pidx}" id="param${pidx}" value="${default_params[pidx]}" onfocus="this.className=\'hover\'" onblur="this.className=\'out\'" />               \
+	  <input type="text" name="param${pidx}" id="param${pidx}" value="${default_params[pidx]}" onfocus="this.className=\'hover\'" onblur="this.className=\'out\'" /> \
 			</py:when>
 			<py:otherwise>
-	 <input type="text" name="param${pidx}" id="param${pidx}" value="${param.getDefault()}" onfocus="this.className=\'hover\'" onblur="this.className=\'out\'" />  \
+	 <input type="text" name="param${pidx}" id="param${pidx}" value="${param.getDefault()}" onfocus="this.className=\'hover\'" onblur="this.className=\'out\'" /> \
 			</py:otherwise>
 		      </py:choose>
 		  </py:otherwise>
 		</py:choose>
-                </fieldset>                                                                                                             \
+                </fieldset> \
 	    </py:for>';
+
+	    <py:for each="pidx,param in enumerate(routers[ridx].listCommands()[cidx].getParamSpecs())">
+	      <py:choose>
+		<py:when test="(param.getType() == 'select') or (param.getType() == 'commonselect')">
+		  <py:for each="paridx,partuple in enumerate(param.getOptions())">
+		    <py:choose>
+		      <py:when test="default_routerid == ridx and default_commandid == cidx and defined('default_params') and partuple[0] == default_params[pidx]">
+			document.getElementById("param${pidx}").selectedIndex=${paridx};
+		      </py:when>
+		      <py:when test="partuple[0] == param.getDefault()">
+			document.getElementById("param${pidx}").selectedIndex=${paridx};
+		      </py:when>
+		    </py:choose>
+		  </py:for>
+		</py:when>
+	      </py:choose>
+	    </py:for>
 	    }
 	</py:for>
       </py:for>
@@ -77,14 +93,14 @@
         var rs=document.getElementById("routerselect");
       <py:for each="ridx,router in enumerate(routers)">
 	if(rs.options[rs.selectedIndex].value==$ridx) {
-	document.getElementById("commandselect").innerHTML='                                                                            \
+	document.getElementById("commandselect").innerHTML=' \
 	<py:for each="cidx,cmd in enumerate(routers[ridx].listCommands())">
 	  <py:choose>
 	    <py:when test="default_routerid == ridx and default_commandid == cidx">
-	      <option value="$cidx" selected="selected">${cmd.getName()}</option>                                                       \
+	      <option value="$cidx" selected="selected">${cmd.getName()}</option> \
 	    </py:when>
 	    <py:otherwise>
-	      <option value="$cidx">${cmd.getName()}</option>                                                                           \
+	      <option value="$cidx">${cmd.getName()}</option> \
 	    </py:otherwise>
 	  </py:choose>
 	</py:for>';

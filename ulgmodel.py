@@ -301,6 +301,20 @@ class SelectionParameter(TextParameter):
         else:
             raise Exception("Invalid input encountered: Check did not passed.")
 
+class CommonSelectionParameter(SelectionParameter):
+    def __init__(self,oid,option_tuples=[],name=defaults.STRING_PARAMETER,default=None):
+        SelectionParameter.__init__(self,option_tuples,name,default)
+        self.setID(oid)
+
+    def getType(self):
+        return 'commonselect'
+
+    def setID(self,oid):
+        self.oid = oid
+
+    def getID(self):
+        return self.oid
+
 
 class TextCommand(object):
     def __init__(self,command,param_specs=[],name=None):

@@ -28,7 +28,7 @@ import re
 import fcntl
 import traceback
 import urllib
-import md5
+import hashlib
 import time
 import random
 
@@ -90,7 +90,7 @@ class Session(object):
         self.save()
 
     def __genSessionId__(self):
-        return md5.new(str(time.time())+str(random.randint(1,1000000))).hexdigest()
+        return hashlib.md5(str(time.time())+str(random.randint(1,1000000))).hexdigest()
 
     def save(self):
         try:
@@ -462,6 +462,16 @@ class ULGCgi:
         else:
             return defaults.refresh_interval
 
+    def getCommonParams(self):
+        res = {}
+        for r in config.routers:
+            for c in r.listCommands():
+                for ps in c.getParamSpecs():
+                    if(ps.getType() == 'commonselect'):
+                        res[ps.getID()] = ps            
+
+        return res
+
     def HTTPRedirect(self,url):
         return """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
@@ -531,6 +541,7 @@ class ULGCgi:
 
         return template.generate(defaults=defaults,
                                  routers=config.routers,
+                                 commonparams=self.getCommonParams(),
                                  default_routerid=routerid,
                                  default_commandid=commandid,
                                  default_sessionid=sessionid,
@@ -617,6 +628,7 @@ class ULGCgi:
         template = self.loader.load(defaults.index_template_file)
         return template.generate(defaults=defaults,
                                  routers=config.routers,
+                                 commonparams=self.getCommonParams(),
                                  default_routerid=session.getRouterId(),
                                  default_commandid=session.getCommandId(),
                                  default_params=session.getParameters(),
@@ -639,6 +651,7 @@ class ULGCgi:
 
         return template.generate(defaults=defaults,
                                  routers=config.routers,
+                                 commonparams=self.getCommonParams(),
                                  default_routerid=0,
                                  default_commandid=0,
                                  default_sessionid=None,
@@ -657,6 +670,7 @@ class ULGCgi:
 
         return template.generate(defaults=defaults,
                                  routers=config.routers,
+                                 commonparams=self.getCommonParams(),
                                  default_routerid=0,
                                  default_commandid=0,
                                  default_sessionid=None,

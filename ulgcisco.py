@@ -23,6 +23,7 @@ import pexpect
 import re
 import sys
 import string
+import hashlib
 
 import defaults
 
@@ -452,27 +453,21 @@ class CiscoCommandBgpIPv6Sum(CiscoCommandBgpIPv46Sum):
 class CiscoCommandShowBgpIPv4Neigh(ulgmodel.TextCommand):
     COMMAND_TEXT='show bgp ipv4 unicast neighbor %s'
 
-    def __init__(self,peers,name=None):
-        peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
-                                                 name=defaults.STRING_IPADDRESS)
-        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
+    def __init__(self,router,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[router.getBGPIPv4Select()],name=name)
 
 class CiscoCommandShowBgpIPv6Neigh(ulgmodel.TextCommand):
     COMMAND_TEXT='show bgp ipv6 unicast neighbor %s'
 
-    def __init__(self,peers,name=None):
-        peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
-                                                 name=defaults.STRING_IPADDRESS)
-        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
+    def __init__(self,router,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[router.getBGPIPv6Select()],name=name)
 
 class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
     TABLE_HEADER_REGEXP=BGP_PREFIX_TABLE_HEADER
     LASTLINE_REGEXP='^\s*Total number of prefixes [0-9]+\s*$'
 
-    def __init__(self,peers,name=None):
-        peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
-                                                      name=defaults.STRING_IPADDRESS)
-        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
+    def __init__(self,peer_select_param,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_select_param],name=name)
 
     def _decorateASPath(self,path,decorator_helper):
         result = ''
@@ -588,19 +583,31 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
 class CiscoCommandShowBgpIPv4NeighAdv(CiscoCommandShowBgpIPv46Select):
     COMMAND_TEXT='show bgp ipv4 unicast neighbor %s advertised'
 
+    def __init__(self,router,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,[router.getBGPIPv4Select()],name=name)
+
 class CiscoCommandShowBgpIPv6NeighAdv(CiscoCommandShowBgpIPv46Select):
     COMMAND_TEXT='show bgp ipv6 unicast neighbor %s advertised'
+
+    def __init__(self,router,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,[router.getBGPIPv6Select()],name=name)
 
 class CiscoCommandShowBgpIPv4NeighRecv(CiscoCommandShowBgpIPv46Select):
     COMMAND_TEXT='show bgp ipv4 unicast neighbor %s received-routes'
 
+    def __init__(self,router,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,[router.getBGPIPv4Select()],name=name)
+
 class CiscoCommandShowBgpIPv6NeighRecv(CiscoCommandShowBgpIPv46Select):
     COMMAND_TEXT='show bgp ipv6 unicast neighbor %s received-routes'
+
+    def __init__(self,router,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,[router.getBGPIPv6Select()],name=name)
 
 class CiscoCommandGraphShowBgpIPv46Uni(ulgmodel.TextCommand):
     TABLE_HEADER_REGEXP=BGP_PREFIX_TABLE_HEADER
 
-    def __init__(self,peers,name=None,param=None):
+    def __init__(self,name=None,param=None):
         ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,
 				      param_specs=[param],
 				      name=name)
@@ -630,17 +637,15 @@ class CiscoCommandGraphShowBgpIPv46Uni(ulgmodel.TextCommand):
 class CiscoCommandGraphShowBgpIPv4Uni(CiscoCommandGraphShowBgpIPv46Uni):
     COMMAND_TEXT='show bgp ipv4 unicast %s'
 
-    def __init__(self,peers,name=None):
-        CiscoCommandGraphShowBgpIPv46Uni.__init__(self,peers,name,
-						  param=ulgmodel.IPv4SubnetParameter())
+    def __init__(self,router,name=None):
+        CiscoCommandGraphShowBgpIPv46Uni.__init__(self,name,param=ulgmodel.IPv4SubnetParameter())
 
 
 class CiscoCommandGraphShowBgpIPv6Uni(CiscoCommandGraphShowBgpIPv46Uni):
     COMMAND_TEXT='show bgp ipv6 unicast %s'
 
-    def __init__(self,peers,name=None):
-        CiscoCommandGraphShowBgpIPv46Uni.__init__(self,peers,name,
-						  param=ulgmodel.IPv6SubnetParameter())
+    def __init__(self,router,name=None):
+        CiscoCommandGraphShowBgpIPv46Uni.__init__(self,name,param=ulgmodel.IPv6SubnetParameter())
 
 
 
@@ -707,14 +712,14 @@ class CiscoRouter(ulgmodel.RemoteRouter):
         return self._getBGPCommands()
 
     def _getAllCommands(self):
-        _show_bgp_ipv4_uni_neigh = CiscoCommandShowBgpIPv4Neigh(self.getBGPIPv4Peers())
-        _show_bgp_ipv4_uni_neigh_advertised = CiscoCommandShowBgpIPv4NeighAdv(self.getBGPIPv4Peers())
-        _show_bgp_ipv4_uni_neigh_received_routes = CiscoCommandShowBgpIPv4NeighRecv(self.getBGPIPv4Peers())
-        _show_bgp_ipv6_uni_neigh = CiscoCommandShowBgpIPv6Neigh(self.getBGPIPv6Peers())
-        _show_bgp_ipv6_uni_neigh_advertised = CiscoCommandShowBgpIPv6NeighAdv(self.getBGPIPv6Peers())
-        _show_bgp_ipv6_uni_neigh_received_routes = CiscoCommandShowBgpIPv6NeighRecv(self.getBGPIPv6Peers())
-        _graph_show_bgp_ipv4_uni = CiscoCommandGraphShowBgpIPv4Uni(self.getBGPIPv4Peers(),COMMAND_NAME_GRAPH4)
-	_graph_show_bgp_ipv6_uni = CiscoCommandGraphShowBgpIPv6Uni(self.getBGPIPv6Peers(),COMMAND_NAME_GRAPH6)
+        _show_bgp_ipv4_uni_neigh = CiscoCommandShowBgpIPv4Neigh(self)
+        _show_bgp_ipv4_uni_neigh_advertised = CiscoCommandShowBgpIPv4NeighAdv(self)
+        _show_bgp_ipv4_uni_neigh_received_routes = CiscoCommandShowBgpIPv4NeighRecv(self)
+        _show_bgp_ipv6_uni_neigh = CiscoCommandShowBgpIPv6Neigh(self)
+        _show_bgp_ipv6_uni_neigh_advertised = CiscoCommandShowBgpIPv6NeighAdv(self)
+        _show_bgp_ipv6_uni_neigh_received_routes = CiscoCommandShowBgpIPv6NeighRecv(self)
+        _graph_show_bgp_ipv4_uni = CiscoCommandGraphShowBgpIPv4Uni(self,COMMAND_NAME_GRAPH4)
+	_graph_show_bgp_ipv6_uni = CiscoCommandGraphShowBgpIPv6Uni(self,COMMAND_NAME_GRAPH6)
 
         return [ulgmodel.TextCommand('show version'),
                 ulgmodel.TextCommand('show interfaces status'),
@@ -745,14 +750,14 @@ class CiscoRouter(ulgmodel.RemoteRouter):
                 ]
 
     def _getBGPCommands(self):
-        _show_bgp_ipv4_uni_neigh = CiscoCommandShowBgpIPv4Neigh(self.getBGPIPv4Peers())
-        _show_bgp_ipv4_uni_neigh_advertised = CiscoCommandShowBgpIPv4NeighAdv(self.getBGPIPv4Peers())
-        _show_bgp_ipv4_uni_neigh_received_routes = CiscoCommandShowBgpIPv4NeighRecv(self.getBGPIPv4Peers())
-        _show_bgp_ipv6_uni_neigh = CiscoCommandShowBgpIPv6Neigh(self.getBGPIPv6Peers())
-        _show_bgp_ipv6_uni_neigh_advertised = CiscoCommandShowBgpIPv6NeighAdv(self.getBGPIPv6Peers())
-        _show_bgp_ipv6_uni_neigh_received_routes = CiscoCommandShowBgpIPv6NeighRecv(self.getBGPIPv6Peers())
-        _graph_show_bgp_ipv4_uni = CiscoCommandGraphShowBgpIPv4Uni(self.getBGPIPv4Peers(),COMMAND_NAME_GRAPH4)
-	_graph_show_bgp_ipv6_uni = CiscoCommandGraphShowBgpIPv6Uni(self.getBGPIPv6Peers(),COMMAND_NAME_GRAPH6)
+        _show_bgp_ipv4_uni_neigh = CiscoCommandShowBgpIPv4Neigh(self)
+        _show_bgp_ipv4_uni_neigh_advertised = CiscoCommandShowBgpIPv4NeighAdv(self)
+        _show_bgp_ipv4_uni_neigh_received_routes = CiscoCommandShowBgpIPv4NeighRecv(self)
+        _show_bgp_ipv6_uni_neigh = CiscoCommandShowBgpIPv6Neigh(self)
+        _show_bgp_ipv6_uni_neigh_advertised = CiscoCommandShowBgpIPv6NeighAdv(self)
+        _show_bgp_ipv6_uni_neigh_received_routes = CiscoCommandShowBgpIPv6NeighRecv(self)
+        _graph_show_bgp_ipv4_uni = CiscoCommandGraphShowBgpIPv4Uni(self,COMMAND_NAME_GRAPH4)
+	_graph_show_bgp_ipv6_uni = CiscoCommandGraphShowBgpIPv6Uni(self,COMMAND_NAME_GRAPH6)
 
         return [
 		CiscoCommandBgpIPv4Sum('show bgp ipv4 unicast summary',
@@ -795,6 +800,13 @@ class CiscoRouter(ulgmodel.RemoteRouter):
             else:
                 self.loadBGPPeers()
 
+	    rid = hashlib.md5(self.getName()).hexdigest()
+
+	    self.bgp4select = ulgmodel.CommonSelectionParameter(rid+"bgp4",[tuple((p,p,)) for p in self.getBGPIPv4Peers()],
+                                                 name=defaults.STRING_IPADDRESS)
+	    self.bgp6select = ulgmodel.CommonSelectionParameter(rid+"bgp6",[tuple((p,p,)) for p in self.getBGPIPv6Peers()],
+                                                 name=defaults.STRING_IPADDRESS)
+
         if(commands):
             self.setCommands(commands)
         else:
@@ -836,6 +848,12 @@ class CiscoRouter(ulgmodel.RemoteRouter):
 
     def getBGPIPv6Peers(self):
         return self.bgp_ipv6_peers
+
+    def getBGPIPv4Select(self):
+        return self.bgp4select
+
+    def getBGPIPv6Select(self):
+        return self.bgp6select
 
     def saveBGPPeers(self):
         key4 = self.getHost() + self.PS_KEY_BGPV4

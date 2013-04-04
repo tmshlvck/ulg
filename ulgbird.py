@@ -386,7 +386,7 @@ class BirdRouter(ulgmodel.Router):
     def __init__(self):
         self.bgp_peers = None
         self.routing_tables = None
-        self.bgp_peers_select = None
+        self.bgp_peer_select = None
         self.rt_select = None
 
     def _getDefaultCommands(self):
@@ -449,7 +449,7 @@ class BirdRouter(ulgmodel.Router):
                                                                   name=defaults.STRING_RTABLE)
 
     def getBGPPeerSelect(self):
-        if(not self.bgp_peers_select):
+        if(not self.bgp_peer_select):
             self.initBGPPeerSelect(self.getBGPPeers())
 
         return self.bgp_peer_select

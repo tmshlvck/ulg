@@ -52,7 +52,7 @@ MAC_ADDRESS_REGEXP = '^[0-9a-fA-F]{4}\.[0-9a-fA-F]{4}\.[0-9a-fA-F]{4}$'
 BGP_RED_STATES = ['Idle', 'Active', '(NoNeg)']
 BGP_YELLOW_STATES = ['Idle (Admin)',]
 
-REGEX_SH_BGP_UNI_ASLINE = '^(\s*)([0-9\s]+)(|,.*)\s*$'
+REGEX_SH_BGP_UNI_ASLINE = '^(\s*)([0-9\s]+|Local)(|,.*)\s*$'
 regex_sh_bgp_uni_asline = re.compile(REGEX_SH_BGP_UNI_ASLINE)
 
 REGEX_SH_BGP_UNI_AGGR = '\s*\(aggregated by ([0-9]+) [0-9a-fA-F:\.]+\).*'
@@ -64,7 +64,7 @@ regex_sh_bgp_uni_recuse = re.compile(REGEX_SH_BGP_UNI_RECUSE)
 REGEX_SH_BGP_UNI_RECONLY = '\s*\(received-only\).*'
 regex_sh_bgp_uni_reconly = re.compile(REGEX_SH_BGP_UNI_RECONLY)
 
-REGEX_SH_BGP_UNI_TABLE_START = '\s*Advertised\s+to\s+update-groups.*'
+REGEX_SH_BGP_UNI_TABLE_START = '\s*(Advertised\s+to\s+update-groups|Not\s+advertised\s+to\s+any\s+peer).*'
 regex_sh_bgp_uni_table_start = re.compile(REGEX_SH_BGP_UNI_TABLE_START)
 
 REGEX_SH_BGP_UNI_PEERLINE = '\s*([0-9a-fA-F:\.]+)\s.*from\s.*'
@@ -80,7 +80,10 @@ STRING_COMMAND_LOGOUT = 'logout'
 
 def cisco_parse_sh_bgp_uni(lines,prependas):
 	def split_ases(ases):
-		return str.split(ases)
+		if ases == 'Local':
+			return []
+		else:
+			return str.split(ases)
 
 	def get_info(info):
 		res = {'recuse':False, 'reconly':False, 'aggr':None}
@@ -101,7 +104,19 @@ def cisco_parse_sh_bgp_uni(lines,prependas):
 	table_prestarted = False
 	table_started = False
 	for l in str.splitlines(lines):
-		if(table_started):
+		if not table_started:
+			if table_prestarted:
+				# if prestarted and a line not containing only numbers of
+				# update groups, start immediately
+				if not re.match('^[0-9\s]+$',l):
+					table_started = True
+
+			# if not prestarted and match occures, wait for next line
+			if(regex_sh_bgp_uni_table_start.match(l)):
+				table_prestarted = True
+
+
+		if table_started:
 			m = regex_sh_bgp_uni_asline.match(l)
 			if(m):
 				ases = [ulgmodel.annotateAS("AS"+str(asn)) for asn in [prependas] + split_ases(m.group(2))]
@@ -120,11 +135,6 @@ def cisco_parse_sh_bgp_uni(lines,prependas):
 			m = regex_sh_bgp_uni_origline_best.match(l)
 			if(m):
 				paths[-1][1]['recuse'] = True
-		else:
-			if(table_prestarted):
-				table_started = True
-			if(regex_sh_bgp_uni_table_start.match(l)):
-				table_prestarted = True
 
 	return paths
 

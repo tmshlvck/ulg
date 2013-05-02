@@ -180,16 +180,20 @@ def matchCiscoBGPLines(header,lines):
     # ?1 hat happens when last element is line-wrapped? It looks like it does
     # not happen in my settings.
 
-    def divideGroups(line,max_index_start=sys.maxint,table_line=False):
+    def divideGroups(line,max_index_start=sys.maxint,table_line=False,first_group_length=3):
         # divide groups starting before max_index_start
         result = []
 
         # when parsing table_line (not the header and not the continuation line)
-        # cut off first four charactes and use them as a group
-        if(table_line and
-           (not re.match('^\s*$',line[0:4]))):
-            result.append([0,4])
-            line = '    '+line[4:]
+        # cut off first N charactes and use them as the first group (flags) when there is
+        # some non-blank characters in the first two groups (therefore the line is the leading)
+        if(table_line):
+            if(re.match('[^\s]+',line[0:(first_group_length+2)])):
+                result.append([0,first_group_length])
+	        line = ' '*first_group_length + line[first_group_length:]
+	else:
+            # parsing header, add virtual Status group to the header
+	    line = 'S'+line[1:]
 
         last_group = False
         for r in re.compile('[^\s]+').finditer(line):
@@ -205,10 +209,17 @@ def matchCiscoBGPLines(header,lines):
 
         # add tail to last groups
         result[-1][1] = len(line)
+
+	# in header force the first group to spann till the end of the next group
+	if(not table_line):
+            result[0][1] = result[1][0]-1
+
         return result
 
 
     def matchGroup(header_groups_indexes,line_group_indexes,last_element):
+        ulgmodel.debug('matchGroup header_group_indexes='+str(header_groups_indexes)+' line_group_indexes='+str(line_group_indexes))
+
         if(len(header_groups_indexes) == 1):
             return 0
 
@@ -251,7 +262,8 @@ def matchCiscoBGPLines(header,lines):
 
     for l in lines:
         # divide groups (leave the last group in one part)
-        lgps = divideGroups(l,hgidxs[-1][0],True)
+        # define boundary of the first group by the first letter of the second group beginning
+        lgps = divideGroups(l,hgidxs[-1][0],True,hgidxs[1][0]-1)
         if(lgps==None):
             continue
 
@@ -271,7 +283,7 @@ def matchCiscoBGPLines(header,lines):
 
             result[-1].append(normalize(l[lgp[0]:lgp[1]]))
 
-    ulgmodel.debug("DEBUG bgpmatchlines:"+str(result))
+    ulgmodel.debug('bgpmatchlines:'+str(result))
 
     return result
 

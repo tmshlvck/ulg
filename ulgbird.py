@@ -413,7 +413,7 @@ class BirdRouter(ulgmodel.Router):
             if(re.match(self.proto_fltr,pspl[1])):
                 peers.append(pspl[0])
 
-        self.bgp_peers = peers
+        self.bgp_peers = sorted(peers)
 
     def rescanRoutingTables(self):
         res = self.runRawSyncCommand(self.RESCAN_TABLES_COMMAND)
@@ -424,7 +424,7 @@ class BirdRouter(ulgmodel.Router):
             if(m and m.group(2).lstrip().rstrip() == STRING_SYMBOL_ROUTING_TABLE):
                 tables.append(m.group(1))
 
-        self.routing_tables = tables
+        self.routing_tables = sorted(tables)
 
     def getBGPPeers(self):
         if(not self.bgp_peers):

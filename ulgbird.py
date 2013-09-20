@@ -106,7 +106,7 @@ def bird_reduce_paths(paths):
 
     return sorted(paths,key=assign_value)
 
-def parseBirdShowProtocols(text,resrange=None):
+def parseBirdShowProtocols(text):
     def parseShowProtocolsLine(line):
         m = bird_show_proto_line_regexp.match(line)
         if(m):
@@ -138,10 +138,7 @@ def parseBirdShowProtocols(text,resrange=None):
 #            else:
 #                ulgmodel.log("ulgbird.parseBirdShowProtocols skipping unparsable line: "+l)
 
-    if(resrange):
-        return (header,table[resrange:resrange+defaults.range_step],len(table))
-    else:
-        return (header,table,len(table))
+    return (header,table,len(table))
 
 # classes
 
@@ -200,7 +197,7 @@ class BirdShowProtocolsCommand(ulgmodel.TextCommand):
         if((not session.getRouter()) or (not decorator_helper)):
             return "<pre>\n%s\n</pre>" % session.getResult()
         else:
-            pr = parseBirdShowProtocols(session.getResult(),session.getRange())
+            pr = parseBirdShowProtocols(session.getResult())
             table_header = pr[0]
             table = []
 

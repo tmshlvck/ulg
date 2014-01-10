@@ -38,8 +38,8 @@ config = ulgmodel.import_config()
 def testRouterCommand(router=0,command=0,params=[]):
     r = config.routers[router]
     try:
-        if(not r.runCommand(r.listCommands()[command],params,ulg.DecoratorHelper())):
-            print "WARN: Outpit of test running command "+str(command)+" on router "+str(router)+" with parameters:"+str(params)+" is empty."
+        if(not r.runSyncCommand(r.listCommands()[command],params)):
+            print "WARN: Output of test running command "+str(command)+" on router "+str(router)+" with parameters:"+str(params)+" is empty."
             return False
 
     except Exception as e:
@@ -143,7 +143,7 @@ def testULGLock():
 def testULGRunParameter(router=0,command=4,params=['91.210.16.1']):
     r = config.routers[router]
     try:
-        if(not r.runCommand(r.listCommands()[command],params,ulg.DecoratorHelper())):
+        if(not r.runSyncCommand(r.listCommands()[command],params)):
             print "WARN: Output of test running command "+str(command)+" on router "+str(router)+" with parameters:"+str(params)+" is empty."
             return False
 

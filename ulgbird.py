@@ -596,7 +596,7 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
         else:
             self.bin_birdc = defaults.default_bin_birdc
 
-        if(bin_birdc):
+        if(bin_ssh):
             self.bin_ssh = bin_ssh
         else:
             self.bin_ssh = defaults.bin_ssh

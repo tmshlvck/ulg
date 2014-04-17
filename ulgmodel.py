@@ -169,6 +169,7 @@ class TextParameter(object):
             raise Exception("Invalid input encountered: Check did not passed.")
 
 class AddressParameter(TextParameter):
+    """ Abstract base class """
     def __init__(self,pattern=None,name=defaults.STRING_IPADDRESS,default=''):
         TextParameter.__init__(self,pattern,name,default)
 
@@ -231,6 +232,31 @@ class IPv6AddressParameter(AddressParameter):
         AddressParameter.__init__(self,IPV6_ADDRESS_REGEXP,name,default)
         self.addrfam=socket.AF_INET6
 
+class IPv64AddressParameter(IPv6AddressParameter):
+    def __init__(self,name=defaults.STRING_IPADDRESS,default=''):
+        IPv6AddressParameter.__init__(self,name,default)
+        self.ip6 = IPv6AddressParameter(name,default)
+        self.ip4 = IPv4AddressParameter(name,default)
+
+    def checkInput(self,input):
+        if(self.ip6.checkInput(input)):
+            return True
+        elif(self.ip4.checkInput(input)):
+            return True
+        else:
+            return False
+
+    def normalizeInput(self,input):
+        res1 = self.ip6.normalizeInput(input)
+        if(res1 != input):
+            return res1
+
+        res2 = self.ip4.normalizeInput(input)
+        if(res2 != input):
+            return res2
+
+        return input
+
 
 class SelectionParameter(TextParameter):
     def __init__(self,option_tuples=[],name=defaults.STRING_PARAMETER,default=None):
@@ -274,6 +300,20 @@ class SelectionParameter(TextParameter):
             return input
         else:
             raise Exception("Invalid input encountered: Check did not passed.")
+
+class CommonSelectionParameter(SelectionParameter):
+    def __init__(self,oid,option_tuples=[],name=defaults.STRING_PARAMETER,default=None):
+        SelectionParameter.__init__(self,option_tuples,name,default)
+        self.setID(oid)
+
+    def getType(self):
+        return 'commonselect'
+
+    def setID(self,oid):
+        self.oid = oid
+
+    def getID(self):
+        return self.oid
 
 
 class TextCommand(object):
@@ -396,8 +436,8 @@ class Router(object):
             c.rescanHook(self)
 
     def returnError(self,error=None):
-        r = '<em>'+defaults.STRING_ERROR_COMMANDRUN
-        r = r + ': '+error+'</em>' if error else r+'.</em>'
+        r = defaults.STRING_ERROR_COMMANDRUN
+        r = r + ': '+error if error else r
         return r
 
     def __prepareCommand(self,command,parameters):

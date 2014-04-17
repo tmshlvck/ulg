@@ -23,6 +23,7 @@ import pexpect
 import re
 import sys
 import string
+import hashlib
 
 import defaults
 
@@ -34,11 +35,13 @@ STRING_EXPECT_SSH_NEWKEY='Are you sure you want to continue connecting'
 STRING_EXPECT_PASSWORD='(P|p)assword:'
 STRING_EXPECT_SHELL_PROMPT_REGEXP = '\n[a-zA-Z0-9\._-]+(>|#)'
 BGP_IPV6_SUM_TABLE_SPLITLINE_REGEXP='^\s*[0-9a-fA-F:]+\s*$'
+IPV46_ADDR_REGEXP = '^[0-9a-fA-F:\.]+$'
 
 BGP_IPV6_TABLE_HEADER_REGEXP='^\s*(Neighbor)\s+(V)\s+(AS)\s+(MsgRcvd)\s+(MsgSent)\s+(TblVer)\s+(InQ)\s+(OutQ)\s+(Up/Down)\s+(State/PfxRcd)\s*$'
-BGP_IPV6_TABLE_LINE_REGEXP='^\s*([0-9a-fA-F:]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([a-zA-Z0-9:]+)\s+([a-zA-Z0-9\(\)]+|[a-zA-Z0-9]+\s\(Admin\))\s*$'
+BGP_IPV46_TABLE_LINE_REGEXP='^\s*([0-9a-fA-F:\.]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([a-zA-Z0-9:]+)\s+([a-zA-Z0-9\(\)]+|[a-zA-Z0-9]+\s\(Admin\))\s*$'
+#BGP_IPV6_TABLE_LINE_REGEXP='^\s*([0-9a-fA-F:]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([a-zA-Z0-9:]+)\s+([a-zA-Z0-9\(\)]+|[a-zA-Z0-9]+\s\(Admin\))\s*$'
 BGP_IPV4_TABLE_HEADER_REGEXP='^\s*(Neighbor)\s+(V)\s+(AS)\s+(MsgRcvd)\s+(MsgSent)\s+(TblVer)\s+(InQ)\s+(OutQ)\s+(Up/Down)\s+(State/PfxRcd)\s*$'
-BGP_IPV4_TABLE_LINE_REGEXP='^\s*([0-9\.]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([a-zA-Z0-9:]+)\s+([a-zA-Z0-9\(\)]+|[a-zA-Z0-9]+\s\(Admin\))\s*$'
+#BGP_IPV4_TABLE_LINE_REGEXP='^\s*([0-9\.]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([a-zA-Z0-9:]+)\s+([a-zA-Z0-9\(\)]+|[a-zA-Z0-9]+\s\(Admin\))\s*$'
 
 BGP_PREFIX_TABLE_HEADER='^(\s)\s+(Network)\s+(Next Hop)\s+(Metric)\s+(LocPrf)\s+(Weight)\s+(Path)\s*$'
 
@@ -50,7 +53,7 @@ MAC_ADDRESS_REGEXP = '^[0-9a-fA-F]{4}\.[0-9a-fA-F]{4}\.[0-9a-fA-F]{4}$'
 BGP_RED_STATES = ['Idle', 'Active', '(NoNeg)']
 BGP_YELLOW_STATES = ['Idle (Admin)',]
 
-REGEX_SH_BGP_UNI_ASLINE = '^(\s*)([0-9\s]+)(|,.*)\s*$'
+REGEX_SH_BGP_UNI_ASLINE = '^(\s*)([0-9\s]+|Local)(|,.*)\s*$'
 regex_sh_bgp_uni_asline = re.compile(REGEX_SH_BGP_UNI_ASLINE)
 
 REGEX_SH_BGP_UNI_AGGR = '\s*\(aggregated by ([0-9]+) [0-9a-fA-F:\.]+\).*'
@@ -62,7 +65,7 @@ regex_sh_bgp_uni_recuse = re.compile(REGEX_SH_BGP_UNI_RECUSE)
 REGEX_SH_BGP_UNI_RECONLY = '\s*\(received-only\).*'
 regex_sh_bgp_uni_reconly = re.compile(REGEX_SH_BGP_UNI_RECONLY)
 
-REGEX_SH_BGP_UNI_TABLE_START = '\s*Advertised\s+to\s+update-groups.*'
+REGEX_SH_BGP_UNI_TABLE_START = '\s*(Advertised\s+to\s+update-groups|Not\s+advertised\s+to\s+any\s+peer).*'
 regex_sh_bgp_uni_table_start = re.compile(REGEX_SH_BGP_UNI_TABLE_START)
 
 REGEX_SH_BGP_UNI_PEERLINE = '\s*([0-9a-fA-F:\.]+)\s.*from\s.*'
@@ -78,7 +81,10 @@ STRING_COMMAND_LOGOUT = 'logout'
 
 def cisco_parse_sh_bgp_uni(lines,prependas):
 	def split_ases(ases):
-		return str.split(ases)
+		if ases == 'Local':
+			return []
+		else:
+			return str.split(ases)
 
 	def get_info(info):
 		res = {'recuse':False, 'reconly':False, 'aggr':None}
@@ -99,7 +105,19 @@ def cisco_parse_sh_bgp_uni(lines,prependas):
 	table_prestarted = False
 	table_started = False
 	for l in str.splitlines(lines):
-		if(table_started):
+		if not table_started:
+			if table_prestarted:
+				# if prestarted and a line not containing only numbers of
+				# update groups, start immediately
+				if not re.match('^[0-9\s]+$',l):
+					table_started = True
+
+			# if not prestarted and match occures, wait for next line
+			if(regex_sh_bgp_uni_table_start.match(l)):
+				table_prestarted = True
+
+
+		if table_started:
 			m = regex_sh_bgp_uni_asline.match(l)
 			if(m):
 				ases = [ulgmodel.annotateAS("AS"+str(asn)) for asn in [prependas] + split_ases(m.group(2))]
@@ -118,11 +136,6 @@ def cisco_parse_sh_bgp_uni(lines,prependas):
 			m = regex_sh_bgp_uni_origline_best.match(l)
 			if(m):
 				paths[-1][1]['recuse'] = True
-		else:
-			if(table_prestarted):
-				table_started = True
-			if(regex_sh_bgp_uni_table_start.match(l)):
-				table_prestarted = True
 
 	return paths
 
@@ -178,16 +191,20 @@ def matchCiscoBGPLines(header,lines):
     # ?1 hat happens when last element is line-wrapped? It looks like it does
     # not happen in my settings.
 
-    def divideGroups(line,max_index_start=sys.maxint,table_line=False):
+    def divideGroups(line,max_index_start=sys.maxint,table_line=False,first_group_length=3):
         # divide groups starting before max_index_start
         result = []
 
         # when parsing table_line (not the header and not the continuation line)
-        # cut off first four charactes and use them as a group
-        if(table_line and
-           (not re.match('^\s*$',line[0:4]))):
-            result.append([0,4])
-            line = '    '+line[4:]
+        # cut off first N charactes and use them as the first group (flags) when there is
+        # some non-blank characters in the first two groups (therefore the line is the leading)
+        if(table_line):
+            if(re.match('[^\s]+',line[0:(first_group_length+2)])):
+                result.append([0,first_group_length])
+	        line = ' '*first_group_length + line[first_group_length:]
+	else:
+            # parsing header, add virtual Status group to the header
+	    line = 'S'+line[1:]
 
         last_group = False
         for r in re.compile('[^\s]+').finditer(line):
@@ -203,10 +220,17 @@ def matchCiscoBGPLines(header,lines):
 
         # add tail to last groups
         result[-1][1] = len(line)
+
+	# in header force the first group to spann till the end of the next group
+	if(not table_line):
+            result[0][1] = result[1][0]-1
+
         return result
 
 
     def matchGroup(header_groups_indexes,line_group_indexes,last_element):
+        ulgmodel.debug('matchGroup header_group_indexes='+str(header_groups_indexes)+' line_group_indexes='+str(line_group_indexes))
+
         if(len(header_groups_indexes) == 1):
             return 0
 
@@ -249,7 +273,8 @@ def matchCiscoBGPLines(header,lines):
 
     for l in lines:
         # divide groups (leave the last group in one part)
-        lgps = divideGroups(l,hgidxs[-1][0],True)
+        # define boundary of the first group by the first letter of the second group beginning
+        lgps = divideGroups(l,hgidxs[-1][0],True,hgidxs[1][0]-1)
         if(lgps==None):
             continue
 
@@ -269,7 +294,7 @@ def matchCiscoBGPLines(header,lines):
 
             result[-1].append(normalize(l[lgp[0]:lgp[1]]))
 
-    ulgmodel.debug("DEBUG bgpmatchlines:"+str(result))
+    ulgmodel.debug('bgpmatchlines:'+str(result))
 
     return result
 
@@ -420,7 +445,7 @@ class CiscoCommandBgpIPv46Sum(ulgmodel.TextCommand):
 
 class CiscoCommandBgpIPv4Sum(CiscoCommandBgpIPv46Sum):
     COMMAND_TEXT='show bgp ipv4 unicast summary'
-    TABLE_LINE_REGEXP=BGP_IPV4_TABLE_LINE_REGEXP
+    TABLE_LINE_REGEXP=BGP_IPV46_TABLE_LINE_REGEXP
     TABLE_HEADER_REGEXP=BGP_IPV4_TABLE_HEADER_REGEXP
 
     def __init__(self,name=None,peer_address_command=None,peer_received_command=None):
@@ -429,7 +454,7 @@ class CiscoCommandBgpIPv4Sum(CiscoCommandBgpIPv46Sum):
 
 class CiscoCommandBgpIPv6Sum(CiscoCommandBgpIPv46Sum):
     COMMAND_TEXT='show bgp ipv6 unicast summary'
-    TABLE_LINE_REGEXP=BGP_IPV6_TABLE_LINE_REGEXP
+    TABLE_LINE_REGEXP=BGP_IPV46_TABLE_LINE_REGEXP
     TABLE_HEADER_REGEXP=BGP_IPV6_TABLE_HEADER_REGEXP
 
     def __init__(self,name=None,peer_address_command=None,peer_received_command=None):
@@ -451,27 +476,21 @@ class CiscoCommandBgpIPv6Sum(CiscoCommandBgpIPv46Sum):
 class CiscoCommandShowBgpIPv4Neigh(ulgmodel.TextCommand):
     COMMAND_TEXT='show bgp ipv4 unicast neighbor %s'
 
-    def __init__(self,peers,name=None):
-        peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
-                                                 name=defaults.STRING_IPADDRESS)
-        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
+    def __init__(self,router,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[router.getBGPIPv4Select()],name=name)
 
 class CiscoCommandShowBgpIPv6Neigh(ulgmodel.TextCommand):
     COMMAND_TEXT='show bgp ipv6 unicast neighbor %s'
 
-    def __init__(self,peers,name=None):
-        peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
-                                                 name=defaults.STRING_IPADDRESS)
-        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
+    def __init__(self,router,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[router.getBGPIPv6Select()],name=name)
 
 class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
     TABLE_HEADER_REGEXP=BGP_PREFIX_TABLE_HEADER
     LASTLINE_REGEXP='^\s*Total number of prefixes [0-9]+\s*$'
 
-    def __init__(self,peers,name=None):
-        peer_param = ulgmodel.SelectionParameter([tuple((p,p,)) for p in peers],
-                                                      name=defaults.STRING_IPADDRESS)
-        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_param],name=name)
+    def __init__(self,peer_select_param,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,param_specs=[peer_select_param],name=name)
 
     def _decorateASPath(self,path,decorator_helper):
         result = ''
@@ -587,19 +606,31 @@ class CiscoCommandShowBgpIPv46Select(ulgmodel.TextCommand):
 class CiscoCommandShowBgpIPv4NeighAdv(CiscoCommandShowBgpIPv46Select):
     COMMAND_TEXT='show bgp ipv4 unicast neighbor %s advertised'
 
+    def __init__(self,router,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,[router.getBGPIPv4Select()],name=name)
+
 class CiscoCommandShowBgpIPv6NeighAdv(CiscoCommandShowBgpIPv46Select):
     COMMAND_TEXT='show bgp ipv6 unicast neighbor %s advertised'
+
+    def __init__(self,router,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,[router.getBGPIPv6Select()],name=name)
 
 class CiscoCommandShowBgpIPv4NeighRecv(CiscoCommandShowBgpIPv46Select):
     COMMAND_TEXT='show bgp ipv4 unicast neighbor %s received-routes'
 
+    def __init__(self,router,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,[router.getBGPIPv4Select()],name=name)
+
 class CiscoCommandShowBgpIPv6NeighRecv(CiscoCommandShowBgpIPv46Select):
     COMMAND_TEXT='show bgp ipv6 unicast neighbor %s received-routes'
+
+    def __init__(self,router,name=None):
+        ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,[router.getBGPIPv6Select()],name=name)
 
 class CiscoCommandGraphShowBgpIPv46Uni(ulgmodel.TextCommand):
     TABLE_HEADER_REGEXP=BGP_PREFIX_TABLE_HEADER
 
-    def __init__(self,peers,name=None,param=None):
+    def __init__(self,name=None,param=None):
         ulgmodel.TextCommand.__init__(self,self.COMMAND_TEXT,
 				      param_specs=[param],
 				      name=name)
@@ -629,17 +660,15 @@ class CiscoCommandGraphShowBgpIPv46Uni(ulgmodel.TextCommand):
 class CiscoCommandGraphShowBgpIPv4Uni(CiscoCommandGraphShowBgpIPv46Uni):
     COMMAND_TEXT='show bgp ipv4 unicast %s'
 
-    def __init__(self,peers,name=None):
-        CiscoCommandGraphShowBgpIPv46Uni.__init__(self,peers,name,
-						  param=ulgmodel.IPv4SubnetParameter())
+    def __init__(self,router,name=None):
+        CiscoCommandGraphShowBgpIPv46Uni.__init__(self,name,param=ulgmodel.IPv4SubnetParameter())
 
 
 class CiscoCommandGraphShowBgpIPv6Uni(CiscoCommandGraphShowBgpIPv46Uni):
     COMMAND_TEXT='show bgp ipv6 unicast %s'
 
-    def __init__(self,peers,name=None):
-        CiscoCommandGraphShowBgpIPv46Uni.__init__(self,peers,name,
-						  param=ulgmodel.IPv6SubnetParameter())
+    def __init__(self,router,name=None):
+        CiscoCommandGraphShowBgpIPv46Uni.__init__(self,name,param=ulgmodel.IPv6SubnetParameter())
 
 
 
@@ -703,14 +732,17 @@ class CiscoRouter(ulgmodel.RemoteRouter):
     PS_KEY_BGPV6 = '-bgpipv6'
 
     def _getDefaultCommands(self):
-        _show_bgp_ipv4_uni_neigh = CiscoCommandShowBgpIPv4Neigh(self.getBGPIPv4Peers())
-        _show_bgp_ipv4_uni_neigh_advertised = CiscoCommandShowBgpIPv4NeighAdv(self.getBGPIPv4Peers())
-        _show_bgp_ipv4_uni_neigh_received_routes = CiscoCommandShowBgpIPv4NeighRecv(self.getBGPIPv4Peers())
-        _show_bgp_ipv6_uni_neigh = CiscoCommandShowBgpIPv6Neigh(self.getBGPIPv6Peers())
-        _show_bgp_ipv6_uni_neigh_advertised = CiscoCommandShowBgpIPv6NeighAdv(self.getBGPIPv6Peers())
-        _show_bgp_ipv6_uni_neigh_received_routes = CiscoCommandShowBgpIPv6NeighRecv(self.getBGPIPv6Peers())
-        _graph_show_bgp_ipv4_uni = CiscoCommandGraphShowBgpIPv4Uni(self.getBGPIPv4Peers(),COMMAND_NAME_GRAPH4)
-	_graph_show_bgp_ipv6_uni = CiscoCommandGraphShowBgpIPv6Uni(self.getBGPIPv6Peers(),COMMAND_NAME_GRAPH6)
+        return self._getBGPCommands()
+
+    def _getAllCommands(self):
+        _show_bgp_ipv4_uni_neigh = CiscoCommandShowBgpIPv4Neigh(self)
+        _show_bgp_ipv4_uni_neigh_advertised = CiscoCommandShowBgpIPv4NeighAdv(self)
+        _show_bgp_ipv4_uni_neigh_received_routes = CiscoCommandShowBgpIPv4NeighRecv(self)
+        _show_bgp_ipv6_uni_neigh = CiscoCommandShowBgpIPv6Neigh(self)
+        _show_bgp_ipv6_uni_neigh_advertised = CiscoCommandShowBgpIPv6NeighAdv(self)
+        _show_bgp_ipv6_uni_neigh_received_routes = CiscoCommandShowBgpIPv6NeighRecv(self)
+        _graph_show_bgp_ipv4_uni = CiscoCommandGraphShowBgpIPv4Uni(self,COMMAND_NAME_GRAPH4)
+	_graph_show_bgp_ipv6_uni = CiscoCommandGraphShowBgpIPv6Uni(self,COMMAND_NAME_GRAPH6)
 
         return [ulgmodel.TextCommand('show version'),
                 ulgmodel.TextCommand('show interfaces status'),
@@ -736,7 +768,41 @@ class CiscoRouter(ulgmodel.RemoteRouter):
                 ulgmodel.TextCommand('show mac-address-table interface %s',[ulgmodel.TextParameter('.*',name=defaults.STRING_INTERFACE)]),
                 _graph_show_bgp_ipv4_uni,
 		_graph_show_bgp_ipv6_uni,
+		ulgmodel.TextCommand('ping %s',[ulgmodel.IPv64AddressParameter()]),
+		ulgmodel.TextCommand('traceroute %s',[ulgmodel.IPv64AddressParameter()]),
                 ]
+
+    def _getBGPCommands(self):
+        _show_bgp_ipv4_uni_neigh = CiscoCommandShowBgpIPv4Neigh(self)
+        _show_bgp_ipv4_uni_neigh_advertised = CiscoCommandShowBgpIPv4NeighAdv(self)
+        _show_bgp_ipv4_uni_neigh_received_routes = CiscoCommandShowBgpIPv4NeighRecv(self)
+        _show_bgp_ipv6_uni_neigh = CiscoCommandShowBgpIPv6Neigh(self)
+        _show_bgp_ipv6_uni_neigh_advertised = CiscoCommandShowBgpIPv6NeighAdv(self)
+        _show_bgp_ipv6_uni_neigh_received_routes = CiscoCommandShowBgpIPv6NeighRecv(self)
+        _graph_show_bgp_ipv4_uni = CiscoCommandGraphShowBgpIPv4Uni(self,COMMAND_NAME_GRAPH4)
+	_graph_show_bgp_ipv6_uni = CiscoCommandGraphShowBgpIPv6Uni(self,COMMAND_NAME_GRAPH6)
+
+        return [
+		CiscoCommandBgpIPv4Sum('show bgp ipv4 unicast summary',
+                                        peer_address_command=_show_bgp_ipv4_uni_neigh,
+                                       peer_received_command=_show_bgp_ipv4_uni_neigh_received_routes),
+                CiscoCommandBgpIPv6Sum('show bgp ipv6 unicast summary',
+                                       peer_address_command=_show_bgp_ipv6_uni_neigh,
+                                       peer_received_command=_show_bgp_ipv6_uni_neigh_received_routes),
+                _show_bgp_ipv4_uni_neigh,
+                _show_bgp_ipv6_uni_neigh,
+                _show_bgp_ipv4_uni_neigh_received_routes,
+                _show_bgp_ipv6_uni_neigh_received_routes,
+                _show_bgp_ipv4_uni_neigh_advertised,
+                _show_bgp_ipv6_uni_neigh_advertised,
+                CiscoShowBgpIPv4Uni(),
+		CiscoShowBgpIPv6Uni(),
+                _graph_show_bgp_ipv4_uni,
+		_graph_show_bgp_ipv6_uni,
+		ulgmodel.TextCommand('ping %s',[ulgmodel.IPv64AddressParameter()]),
+		ulgmodel.TextCommand('traceroute %s',[ulgmodel.IPv64AddressParameter()]),
+                ]
+
 
     def __init__(self, host, user, password, port=22, commands=None, enable_bgp=True, asn='My ASN', name=None):
         self.setHost(host)
@@ -756,6 +822,13 @@ class CiscoRouter(ulgmodel.RemoteRouter):
                 self.rescanHook()
             else:
                 self.loadBGPPeers()
+
+	    rid = hashlib.md5(self.getName()).hexdigest()
+
+	    self.bgp4select = ulgmodel.CommonSelectionParameter(rid+"bgp4",[tuple((p,p,)) for p in self.getBGPIPv4Peers()],
+                                                 name=defaults.STRING_IPADDRESS)
+	    self.bgp6select = ulgmodel.CommonSelectionParameter(rid+"bgp6",[tuple((p,p,)) for p in self.getBGPIPv6Peers()],
+                                                 name=defaults.STRING_IPADDRESS)
 
         if(commands):
             self.setCommands(commands)
@@ -783,10 +856,10 @@ class CiscoRouter(ulgmodel.RemoteRouter):
         return peers
 
     def rescanBGPIPv4Peers(self):
-        self.bgp_ipv4_peers = self.rescanBGPPeers(RESCAN_BGP_IPv4_COMMAND,BGP_IPV4_TABLE_LINE_REGEXP,False)
+        self.bgp_ipv4_peers = self.rescanBGPPeers(RESCAN_BGP_IPv4_COMMAND,BGP_IPV46_TABLE_LINE_REGEXP,False)
 
     def rescanBGPIPv6Peers(self):
-        self.bgp_ipv6_peers = self.rescanBGPPeers(RESCAN_BGP_IPv6_COMMAND,BGP_IPV6_TABLE_LINE_REGEXP,True)
+        self.bgp_ipv6_peers = self.rescanBGPPeers(RESCAN_BGP_IPv6_COMMAND,BGP_IPV46_TABLE_LINE_REGEXP,True)
         
     def rescanHook(self):
         self.rescanBGPIPv4Peers()
@@ -798,6 +871,12 @@ class CiscoRouter(ulgmodel.RemoteRouter):
 
     def getBGPIPv6Peers(self):
         return self.bgp_ipv6_peers
+
+    def getBGPIPv4Select(self):
+        return self.bgp4select
+
+    def getBGPIPv6Select(self):
+        return self.bgp6select
 
     def saveBGPPeers(self):
         key4 = self.getHost() + self.PS_KEY_BGPV4

@@ -38,9 +38,10 @@ BGP_IPV6_SUM_TABLE_SPLITLINE_REGEXP='^\s*[0-9a-fA-F:]+\s*$'
 IPV46_ADDR_REGEXP = '^[0-9a-fA-F:\.]+$'
 
 BGP_IPV6_TABLE_HEADER_REGEXP='^\s*(Neighbor)\s+(V)\s+(AS)\s+(MsgRcvd)\s+(MsgSent)\s+(TblVer)\s+(InQ)\s+(OutQ)\s+(Up/Down)\s+(State/PfxRcd)\s*$'
-BGP_IPV6_TABLE_LINE_REGEXP='^\s*([0-9a-fA-F:]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([a-zA-Z0-9:]+)\s+([a-zA-Z0-9\(\)]+|[a-zA-Z0-9]+\s\(Admin\))\s*$'
+BGP_IPV46_TABLE_LINE_REGEXP='^\s*([0-9a-fA-F:\.]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([a-zA-Z0-9:]+)\s+([a-zA-Z0-9\(\)]+|[a-zA-Z0-9]+\s\(Admin\))\s*$'
+#BGP_IPV6_TABLE_LINE_REGEXP='^\s*([0-9a-fA-F:]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([a-zA-Z0-9:]+)\s+([a-zA-Z0-9\(\)]+|[a-zA-Z0-9]+\s\(Admin\))\s*$'
 BGP_IPV4_TABLE_HEADER_REGEXP='^\s*(Neighbor)\s+(V)\s+(AS)\s+(MsgRcvd)\s+(MsgSent)\s+(TblVer)\s+(InQ)\s+(OutQ)\s+(Up/Down)\s+(State/PfxRcd)\s*$'
-BGP_IPV4_TABLE_LINE_REGEXP='^\s*([0-9\.]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([a-zA-Z0-9:]+)\s+([a-zA-Z0-9\(\)]+|[a-zA-Z0-9]+\s\(Admin\))\s*$'
+#BGP_IPV4_TABLE_LINE_REGEXP='^\s*([0-9\.]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([a-zA-Z0-9:]+)\s+([a-zA-Z0-9\(\)]+|[a-zA-Z0-9]+\s\(Admin\))\s*$'
 
 BGP_PREFIX_TABLE_HEADER='^(\s)\s+(Network)\s+(Next Hop)\s+(Metric)\s+(LocPrf)\s+(Weight)\s+(Path)\s*$'
 
@@ -444,7 +445,7 @@ class CiscoCommandBgpIPv46Sum(ulgmodel.TextCommand):
 
 class CiscoCommandBgpIPv4Sum(CiscoCommandBgpIPv46Sum):
     COMMAND_TEXT='show bgp ipv4 unicast summary'
-    TABLE_LINE_REGEXP=BGP_IPV4_TABLE_LINE_REGEXP
+    TABLE_LINE_REGEXP=BGP_IPV46_TABLE_LINE_REGEXP
     TABLE_HEADER_REGEXP=BGP_IPV4_TABLE_HEADER_REGEXP
 
     def __init__(self,name=None,peer_address_command=None,peer_received_command=None):
@@ -453,7 +454,7 @@ class CiscoCommandBgpIPv4Sum(CiscoCommandBgpIPv46Sum):
 
 class CiscoCommandBgpIPv6Sum(CiscoCommandBgpIPv46Sum):
     COMMAND_TEXT='show bgp ipv6 unicast summary'
-    TABLE_LINE_REGEXP=BGP_IPV6_TABLE_LINE_REGEXP
+    TABLE_LINE_REGEXP=BGP_IPV46_TABLE_LINE_REGEXP
     TABLE_HEADER_REGEXP=BGP_IPV6_TABLE_HEADER_REGEXP
 
     def __init__(self,name=None,peer_address_command=None,peer_received_command=None):
@@ -855,10 +856,10 @@ class CiscoRouter(ulgmodel.RemoteRouter):
         return peers
 
     def rescanBGPIPv4Peers(self):
-        self.bgp_ipv4_peers = self.rescanBGPPeers(RESCAN_BGP_IPv4_COMMAND,BGP_IPV4_TABLE_LINE_REGEXP,False)
+        self.bgp_ipv4_peers = self.rescanBGPPeers(RESCAN_BGP_IPv4_COMMAND,BGP_IPV46_TABLE_LINE_REGEXP,False)
 
     def rescanBGPIPv6Peers(self):
-        self.bgp_ipv6_peers = self.rescanBGPPeers(RESCAN_BGP_IPv6_COMMAND,BGP_IPV6_TABLE_LINE_REGEXP,True)
+        self.bgp_ipv6_peers = self.rescanBGPPeers(RESCAN_BGP_IPv6_COMMAND,BGP_IPV46_TABLE_LINE_REGEXP,True)
         
     def rescanHook(self):
         self.rescanBGPIPv4Peers()

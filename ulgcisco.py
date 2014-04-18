@@ -412,7 +412,10 @@ class CiscoCommandBgpIPv46Sum(ulgmodel.TextCommand):
         if((not session.getRouter()) or (not decorator_helper)):
             return "<pre>\n%s\n</pre>" % session.getResult()
 
-        lines = str.splitlines(session.getResult())
+	lines=[]
+        res=''
+        for l in normalizeBGPIPv6SumSplitLines(str.splitlines(session.getResult())):
+            lines.append(l)
 
         before=''
         after=''
@@ -459,18 +462,6 @@ class CiscoCommandBgpIPv6Sum(CiscoCommandBgpIPv46Sum):
 
     def __init__(self,name=None,peer_address_command=None,peer_received_command=None):
         return CiscoCommandBgpIPv46Sum.__init__(self,name,peer_address_command,peer_received_command)
-
-    def decorateResult(self,session,decorator_helper=None):
-	if(session.getResult() == None):
-            return (decorator_helper.pre(defaults.STRING_EMPTY), 1)
-
-        res=''
-        for l in normalizeBGPIPv6SumSplitLines(str.splitlines(session.getResult())):
-            res = res + "\n" + l
-
-        s = decorator_helper.copy_session(session)
-        s.setResult(res)
-        return super(CiscoCommandBgpIPv6Sum,self).decorateResult(s,decorator_helper)
 
 
 class CiscoCommandShowBgpIPv4Neigh(ulgmodel.TextCommand):
@@ -839,15 +830,13 @@ class CiscoRouter(ulgmodel.RemoteRouter):
     def getForkNeeded(self):
         return True
 
-    def rescanBGPPeers(self,command,regexp,ipv6=True):
+    def rescanBGPPeers(self,command,regexp):
         table = self.runRawSyncCommand(command)
 
         peers = []
         rlr = re.compile(regexp)
-        if ipv6:
-            lines = normalizeBGPIPv6SumSplitLines(str.splitlines(table))
-        else:
-            lines = str.splitlines(table)
+	lines = normalizeBGPIPv6SumSplitLines(str.splitlines(table))
+
         for tl in lines:
             rlrm = rlr.match(tl)
             if(rlrm):
@@ -856,10 +845,10 @@ class CiscoRouter(ulgmodel.RemoteRouter):
         return peers
 
     def rescanBGPIPv4Peers(self):
-        self.bgp_ipv4_peers = self.rescanBGPPeers(RESCAN_BGP_IPv4_COMMAND,BGP_IPV46_TABLE_LINE_REGEXP,False)
+        self.bgp_ipv4_peers = self.rescanBGPPeers(RESCAN_BGP_IPv4_COMMAND,BGP_IPV46_TABLE_LINE_REGEXP)
 
     def rescanBGPIPv6Peers(self):
-        self.bgp_ipv6_peers = self.rescanBGPPeers(RESCAN_BGP_IPv6_COMMAND,BGP_IPV46_TABLE_LINE_REGEXP,True)
+        self.bgp_ipv6_peers = self.rescanBGPPeers(RESCAN_BGP_IPv6_COMMAND,BGP_IPV46_TABLE_LINE_REGEXP)
         
     def rescanHook(self):
         self.rescanBGPIPv4Peers()

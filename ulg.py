@@ -546,7 +546,7 @@ class ULGCgi:
                                  default_commandid=commandid,
                                  default_sessionid=sessionid,
                                  getFormURL=self.decorator_helper.getRuncommandURL
-                                 ).render('html', doctype='html')
+                                 ).render('html', doctype='html', encoding='utf-8')
 
 
     def renderULGAction(self,routerid=0,commandid=0,sessionid=None,**moreparams):
@@ -638,7 +638,7 @@ class ULGCgi:
                                  getFormURL=self.decorator_helper.getRuncommandURL,
                                  resrange=str(session.getRange()),
                                  resrangeb=getRangeStepURLs(session,self.decorator_helper),
-                                 ).render('html', doctype='html')
+                                 ).render('html', doctype='html', encoding='utf-8')
 
     def renderULGError(self,sessionid=None,**params):
         template = self.loader.load(defaults.index_template_file)
@@ -658,7 +658,7 @@ class ULGCgi:
                                  result=Markup(result_text) if(result_text) else None,
                                  refresh=0,
                                  getFormURL=self.decorator_helper.getRuncommandURL
-                                 ).render('html', doctype='html')
+                                 ).render('html', doctype='html', encoding='utf-8')
     
     def renderULGDebug(self,**params):
         template = self.loader.load(defaults.index_template_file)
@@ -677,7 +677,7 @@ class ULGCgi:
                                  result=Markup(result_text) if(result_text) else None,
                                  refresh=0,
                                  getFormURL=self.decorator_helper.getRuncommandURL()
-                                 ).render('html', doctype='html')
+                                 ).render('html', doctype='html', encoding='utf-8')
 
 
     def getULGSpecialContent(self,sessionid,**params):
@@ -711,7 +711,7 @@ class ULGCgi:
         return template.generate(result=Markup(res),
                                  url=url,
                                  url_caption=urlc,
-                                 ).render('html', doctype='html')
+                                 ).render('html', doctype='html', encoding='utf-8')
 
 
     def index(self, **params):

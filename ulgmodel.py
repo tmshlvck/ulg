@@ -138,7 +138,7 @@ class TableDecorator(object):
                                  table_headline=Markup(self.table_headline) if self.table_headline else '',
                                  before=Markup(self.before) if self.before else '',
                                  after=Markup(self.after) if self.after else '',
-                                 ).render('html')
+                                 ).render('html', encoding='utf-8')
 
 
 class TextParameter(object):

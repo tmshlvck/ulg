@@ -514,6 +514,9 @@ class BirdRouterLocal(ulgmodel.LocalRouter,BirdRouter):
             elif(code == 13):
                 # show status last line
                 return True
+            elif(code == 8001):
+                # network not in table end
+                return True
             elif(code >= 9000):
                 # probably error
                 return True

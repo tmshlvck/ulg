@@ -460,8 +460,8 @@ class BirdRouter(ulgmodel.Router):
 
 
 class BirdRouterLocal(ulgmodel.LocalRouter,BirdRouter):
-    def __init__(self,sock=defaults.default_bird_sock,commands=None,proto_fltr=None,asn='My ASN',name='localhost'):
-        ulgmodel.LocalRouter.__init__(self)
+    def __init__(self,sock=defaults.default_bird_sock,commands=None,proto_fltr=None,asn='My ASN',name='localhost',acl=None):
+        ulgmodel.LocalRouter.__init__(self,acl=acl)
         BirdRouter.__init__(self)
 
         self.sock = sock
@@ -577,8 +577,8 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
     PS_KEY_BGP = '-bgppeers'
     PS_KEY_RT = '-routetab'
 
-    def __init__(self,host,user,password='',port=22,commands=None,proto_fltr=None,asn='My ASN',name=None,bin_birdc=None,bin_ssh=None):
-        ulgmodel.RemoteRouter.__init__(self)
+    def __init__(self,host,user,password='',port=22,commands=None,proto_fltr=None,asn='My ASN',name=None,bin_birdc=None,bin_ssh=None,acl=None):
+        ulgmodel.RemoteRouter.__init__(self,acl=acl)
         BirdRouter.__init__(self)
 
         self.setHost(host)
@@ -614,6 +614,7 @@ class BirdRouterRemote(ulgmodel.RemoteRouter,BirdRouter):
             self.setCommands(commands)
         else:
             self.setCommands(self._getDefaultCommands())
+
 
     def getForkNeeded(self):
         return True

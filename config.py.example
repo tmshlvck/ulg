@@ -21,6 +21,6 @@ from ulgbird import *
 
 routers = [
     CiscoRouter(host='testrouter1.core.company.com', user='xyz', password='xyz', asn=1234),
-    CiscoRouter(host='testrouter2.core.company.com', user='xyz', password='xyz', asn=2345),
+    CiscoRouter(host='testrouter2.core.company.com', user='xyz', password='xyz', asn=2345, acl=['user1','user2']),
     BirdRouterLocal('/var/run/bird.ctl', asn=3456)
     ]

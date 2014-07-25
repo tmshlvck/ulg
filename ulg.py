@@ -377,13 +377,14 @@ class DecoratorHelper:
 
 
 class ULGCgi:
-    def __init__(self):
+    def __init__(self,user=None):
         self.loader=TemplateLoader(
             os.path.join(os.path.dirname(__file__), defaults.template_dir),
             auto_reload=True
             )
 
         self.decorator_helper = DecoratorHelper()
+        self.user = user
 
 
     def print_text_html(self):
@@ -456,6 +457,10 @@ class ULGCgi:
         session.setResult(defaults.STRING_SESSION_OVERLIMIT)
         session.setFinished()
 
+    def stopSessionAccessDenied(self,session):
+        session.setResult(defaults.STRING_SESSION_ACCESSDENIED)
+        session.setFinished()
+
     def getRefreshInterval(self,datalength=None):
         if(datalength):
             return (datalength/(1024*100))*defaults.refresh_interval + defaults.refresh_interval
@@ -483,7 +488,7 @@ class ULGCgi:
 </body>
 </html>""" % url
 
-    def runCommand(self,session):
+    def runCommand(self,session,user=None):
         class FakeSessionFile(object):
             def __init__(self,session):
                 self.session = session
@@ -504,6 +509,12 @@ class ULGCgi:
                 ulgmodel.debug("Command finished: "+session.getCommand().getName())
                 session.setFinished()
                 decreaseUsageMethod()
+
+        # check router ACL
+        if user:
+            if not session.getRouter().checkACL(user):
+                self.stopSessionAccessDenied(session)
+                return
 
         # try to increase usage counter
         if(self.increaseUsage()):
@@ -534,6 +545,7 @@ class ULGCgi:
         else:
             # stop and report no-op
             self.stopSessionOverlimit(session)
+            return
 
 
     def renderULGIndex(self,routerid=0,commandid=0,sessionid=None):
@@ -545,7 +557,8 @@ class ULGCgi:
                                  default_routerid=routerid,
                                  default_commandid=commandid,
                                  default_sessionid=sessionid,
-                                 getFormURL=self.decorator_helper.getRuncommandURL
+                                 getFormURL=self.decorator_helper.getRuncommandURL,
+                                 user=self.user
                                  ).render('html', doctype='html', encoding='utf-8')
 
 
@@ -638,6 +651,7 @@ class ULGCgi:
                                  getFormURL=self.decorator_helper.getRuncommandURL,
                                  resrange=str(session.getRange()),
                                  resrangeb=getRangeStepURLs(session,self.decorator_helper),
+                                 user=self.user,
                                  ).render('html', doctype='html', encoding='utf-8')
 
     def renderULGError(self,sessionid=None,**params):
@@ -657,7 +671,8 @@ class ULGCgi:
                                  default_sessionid=None,
                                  result=Markup(result_text) if(result_text) else None,
                                  refresh=0,
-                                 getFormURL=self.decorator_helper.getRuncommandURL
+                                 getFormURL=self.decorator_helper.getRuncommandURL,
+                                 user=self.user
                                  ).render('html', doctype='html', encoding='utf-8')
     
     def renderULGDebug(self,**params):
@@ -676,7 +691,8 @@ class ULGCgi:
                                  default_sessionid=None,
                                  result=Markup(result_text) if(result_text) else None,
                                  refresh=0,
-                                 getFormURL=self.decorator_helper.getRuncommandURL()
+                                 getFormURL=self.decorator_helper.getRuncommandURL(),
+                                 user=self.user
                                  ).render('html', doctype='html', encoding='utf-8')
 
 
@@ -752,7 +768,10 @@ class ULGCgi:
 if __name__=="__main__":
     try:
         form = cgi.FieldStorage()
-        handler = ULGCgi()
+        user=None
+        if 'REMOTE_USER' in os.environ:
+            user=os.environ['REMOTE_USER']
+        handler = ULGCgi(user)
 
         action = form.getvalue('action',None)
         params = dict([(k,form.getvalue(k)) for k in form.keys() if k != 'action'])

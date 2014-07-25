@@ -139,18 +139,20 @@
       <label  for="routerselect">1. Router selection:</label>
       <select id="routerselect" name="routerid" onchange="updateFormCommands()">
 	<py:for each="ridx,rtr in enumerate(routers)">
-	  <py:choose>
-	    <py:when test="ridx == default_routerid">
-	      <option value="$ridx" selected="selected">
-		${rtr.getName()}
-	      </option>
-	    </py:when>
-	    <py:otherwise>
-	      <option value="$ridx">
-		${rtr.getName()}
-	      </option>
-	    </py:otherwise>
-	  </py:choose>
+          <py:if test="rtr.checkACL(user)">
+	    <py:choose>
+	      <py:when test="ridx == default_routerid">
+		<option value="$ridx" selected="selected">
+		  ${rtr.getName()}
+		</option>
+	      </py:when>
+	      <py:otherwise>
+		<option value="$ridx">
+		  ${rtr.getName()}
+		</option>
+	      </py:otherwise>
+	    </py:choose>
+          </py:if>
 	</py:for>
       </select>
 

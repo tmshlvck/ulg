@@ -56,6 +56,7 @@ STRING_COMMAND='Command'
 STRING_ERROR_COMMANDRUN='Error encountered while preparing or running command'
 STRING_BAD_PARAMS='Verification of command or parameters failed.'
 STRING_SESSION_OVERLIMIT = "<em>Limit of maximum concurrently running sessions and/or queries has been reached. The command can not be executed now. Please try again later.</em>"
+STRING_SESSION_ACCESSDENIED = "<em>Access denied. The command can not be executed. Please contact the administrator.</em>"
 STRING_ARBITRARY_ERROR = "Error encountered. Operation aborted. See log for further details."
 STRING_IPADDRESS = "IP address"
 STRING_IPSUBNET = "IP subnet"

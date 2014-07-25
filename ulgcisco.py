@@ -795,7 +795,9 @@ class CiscoRouter(ulgmodel.RemoteRouter):
                 ]
 
 
-    def __init__(self, host, user, password, port=22, commands=None, enable_bgp=True, asn='My ASN', name=None):
+    def __init__(self, host, user, password, port=22, commands=None, enable_bgp=True, asn='My ASN', name=None, acl=None):
+        ulgmodel.RemoteRouter.__init__(self,acl=acl)
+
         self.setHost(host)
         self.setPort(port)
         self.setUser(user)

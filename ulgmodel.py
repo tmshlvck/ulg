@@ -415,9 +415,10 @@ class AnyCommand(TextCommand):
         return c
 
 class Router(object):
-    def __init__(self):
+    def __init__(self,acl=None):
         self.setCommands([])
         self.setName('')
+        self.acl = acl
 
     def setName(self,name):
         self.name=name
@@ -434,6 +435,14 @@ class Router(object):
     def rescanHook(self):
         for c in self.listCommands():
             c.rescanHook(self)
+
+    def checkACL(self,user):
+        log("Checking ACL: user="+str(user)+" acl="+str(self.acl))
+
+        if self.acl:
+            if not user in self.acl:
+                return False
+        return True
 
     def returnError(self,error=None):
         r = defaults.STRING_ERROR_COMMANDRUN

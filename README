@@ -10,11 +10,15 @@ Basic instalation procedure is:
 
 1) install prerequisites: Python 2.6 or 2.7, Genshi, Python CGI module, urllib,
    pexpect and pygraph and GraphViz
-2) deploy files in src directory to some place in WWW tree
-3) mkdir /etc/ulg; cp config.py.example /etc/ulg/config.py
-4) edit config.py to set up routers and credentials
-5) edit defaults.py to set up correct paths toward bins
-6) create .htaccess file with following contents:
+2) instal additional router-specific prerequisities:
+ - JuniperRouterRemoteTelnet: Telnet
+ - CiscoRouter: OpenSSH client
+ - BirdRouterRemote: OpenSSH client (default)
+3) deploy files in src directory to some place in WWW tree
+4) mkdir /etc/ulg; cp config.py.example /etc/ulg/config.py
+5) edit config.py to set up routers and credentials
+6) edit defaults.py to set up correct paths toward bins
+7) create .htaccess file with following contents:
 
 <FilesMatch "(.pyc|.*~)">
   Deny from all

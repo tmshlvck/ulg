@@ -3,7 +3,7 @@
 # ULG - Universal Looking Glass
 # (C) 2012 CZ.NIC, z.s.p.o.
 #
-# Cisco IOS-XR support contributed by: Rene Haas, Kurt Bauer
+# Cisco IOS-XR support contributed by: Rene Haas, Kurt Bauer, Abideen Bamgbala.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

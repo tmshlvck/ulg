@@ -6,11 +6,11 @@ ULG version 0.9
 - cherrypy was later dropped and simple CGI was used instead
 - the CGI scripts currently do not support mod_python nor mod_wsgi
 
-Basic instalation procedure is:
+Basic installation procedure is:
 
 1) install prerequisites: Python 2.6 or 2.7, Genshi, Python CGI module, urllib,
    pexpect and pygraph and GraphViz
-2) instal additional router-specific prerequisities:
+2) install additional router-specific prerequisities:
  - JuniperRouterRemoteTelnet: Telnet
  - CiscoRouter: OpenSSH client
  - BirdRouterRemote: OpenSSH client (default)

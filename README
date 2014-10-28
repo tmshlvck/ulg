@@ -14,7 +14,7 @@ Basic installation procedure is:
  - JuniperRouterRemoteTelnet: Telnet
  - CiscoRouter: OpenSSH client
  - BirdRouterRemote: OpenSSH client (default)
-3) deploy files in src directory to some place in WWW tree
+3) deploy files in src trYdirectory to some place in WWW tree
 4) mkdir /etc/ulg; cp config.py.example /etc/ulg/config.py
 5) edit config.py to set up routers and credentials
 6) edit defaults.py to set up correct paths toward bins
@@ -33,8 +33,7 @@ AddHandler cgi-script .py
 8) change strings and templates in defaults.py and templates/*.html .
 
 Procedure for Debian Squeeze/Wheezy and Linux Mint 14 (nadia):
-1)
-apt-get install python python-pexpect python-pygraph python-genshi libgv-python whois
+1) apt-get install python python-pexpect python-pygraph python-genshi libgv-python whois
 
 All other steps are the same as in generic case.
 
@@ -48,5 +47,5 @@ Contacts:
 
 Future plans:
 
-This "pre-release" is only a preview and "technology demonstrator". Requests and contributions are welcomed. I indend to support BIRD (http://bird.network.cz) and Cisco routers and switches and support typical BGP-related commands and also IGP and L2 management commands in order to make LG more useful for ordinary NOC staff especially for information aquisition during outages and problems.
+This "pre-release" is only a preview and "technology demonstrator". Requests and contributions are welcomed. I intend to support BIRD (http://bird.network.cz) and Cisco routers and switches and support typical BGP-related commands and also IGP and L2 management commands in order to make LG more useful for ordinary NOC staff especially for information aquisition during outages and problems.
 

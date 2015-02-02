@@ -724,7 +724,7 @@ class ULGCgi:
         template = self.loader.load(defaults.whois_template_file)
 
         res = whois.lookup(key)
-        return template.generate(result=Markup(res),
+        return template.generate(result=res,
                                  url=url,
                                  url_caption=urlc,
                                  ).render('html', doctype='html', encoding='utf-8')

@@ -34,7 +34,8 @@ class LinuxRouter(ulgmodel.Router):
         pass
 
     def _getDefaultCommands(self):
-        return [ulgmodel.TextCommand("ping -c 4 %s", param_specs=[ulgmodel.IPv64AddressParameter()]),
+        return [ulgmodel.TextCommand("ping -c 4 %s", param_specs=[ulgmodel.IPv4AddressParameter()]),
+                ulgmodel.TextCommand("ping6 -c 4 %s", param_specs=[ulgmodel.IPv6AddressParameter()]),
                 ulgmodel.TextCommand("traceroute %s", param_specs=[ulgmodel.IPv4AddressParameter()]),
                 ulgmodel.TextCommand("traceroute6 %s", param_specs=[ulgmodel.IPv6AddressParameter()]),
                 ]

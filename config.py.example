@@ -25,4 +25,5 @@ routers = [
     BirdRouterLocal('/var/run/bird.ctl', asn=3456),
     BirdRouterRemote('host', 'user', 'password', asn=5678, name='Hostname Bird'),
     LinuxRouterLocal(),
+    LinuxRouterRemote('host', 'user'),
     ]

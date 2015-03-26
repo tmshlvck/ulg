@@ -24,4 +24,6 @@ routers = [
     CiscoRouter(host='testrouter2.core.company.com', user='xyz', password='xyz', asn=2345, acl=['user1','user2']),
     BirdRouterLocal('/var/run/bird.ctl', asn=3456),
     BirdRouterRemote('host', 'user', 'password', asn=5678, name='Hostname Bird'),
+    LinuxRouterLocal(),
+    LinuxRouterRemote('host', 'user'),
     ]

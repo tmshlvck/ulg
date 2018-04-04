@@ -1,3 +1,6 @@
+Warning: The project is generally abandoned, it depends on obsolete libraries, Python 2.7
+and has been tested only with rather old routers and their software.
+
 ULG version 0.9
 - development started in June 2012
 - sponsored by CZ.NIC (http://www.nic.cz)
